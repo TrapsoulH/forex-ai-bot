@@ -3,6 +3,7 @@ package com.forexbot.service;
 import com.forexbot.config.BotProperties;
 import com.forexbot.model.Trade;
 import com.forexbot.repository.TradeRepository;
+import com.forexbot.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -18,17 +19,23 @@ import java.util.Map;
 @Service
 public class TradeService {
 
-    private final BotProperties botProperties;
+    private final BotProperties  botProperties;
     private final TradeRepository tradeRepository;
-    private final WebClient mt5Client;
+    private final UserRepository  userRepository;
+    private final EmailService    emailService;
+    private final WebClient       mt5Client;
 
     public TradeService(
             BotProperties botProperties,
             TradeRepository tradeRepository,
+            UserRepository userRepository,
+            EmailService emailService,
             @Qualifier("mt5WebClient") WebClient mt5Client
     ) {
         this.botProperties   = botProperties;
         this.tradeRepository = tradeRepository;
+        this.userRepository  = userRepository;
+        this.emailService    = emailService;
         this.mt5Client       = mt5Client;
     }
 
@@ -83,6 +90,16 @@ public class TradeService {
         Trade saved = tradeRepository.save(trade);
         log.info("Trade saved | id={} symbol={} direction={} ticket={} price={}",
                 saved.getId(), symbol, direction, ticket, openPrice);
+
+        // Notify all users — fire-and-forget so email failure never affects trade flow
+        try {
+            userRepository.findAll().stream()
+                .filter(u -> u.getEmail() != null && !u.getEmail().isBlank())
+                .forEach(u -> emailService.sendTradeOpened(u.getEmail(), saved));
+        } catch (Exception e) {
+            log.error("Failed to send trade notification emails: {}", e.getMessage());
+        }
+
         return saved;
     }
 

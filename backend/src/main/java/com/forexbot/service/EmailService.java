@@ -87,6 +87,29 @@ public class EmailService {
                  ctx);
     }
 
+    // ── Trade notification ────────────────────────────────────────────────────
+
+    public void sendTradeOpened(String toEmail, com.forexbot.model.Trade trade) {
+        if (!isMailConfigured()) {
+            log.warn("╔══ TRADE OPENED (dev mode — no SMTP) ═══════════════════════════╗");
+            log.warn("  To: {} | {} {} vol={} price={}",
+                    toEmail, trade.getDirection(), trade.getSymbol(),
+                    trade.getVolume(), trade.getOpenPrice());
+            log.warn("╚═════════════════════════════════════════════════════════════════╝");
+            return;
+        }
+
+        Context ctx = new Context();
+        ctx.setVariable("trade", trade);
+        ctx.setVariable("dashboardUrl", baseUrl + "/dashboard");
+
+        String direction = trade.getDirection().name();
+        String subject   = direction + " " + trade.getSymbol()
+                         + " — Trade opened | Harvest Technologies";
+
+        sendHtml(toEmail, subject, "email/trade-notification", ctx);
+    }
+
     // ── Weekly review ─────────────────────────────────────────────────────────
 
     public void sendWeeklyReview(String toEmail, com.forexbot.dto.WeeklyStatsDto stats) {
