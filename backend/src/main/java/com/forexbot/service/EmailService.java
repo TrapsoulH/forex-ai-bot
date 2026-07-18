@@ -1,17 +1,20 @@
 package com.forexbot.service;
 
+import jakarta.mail.internet.MimeMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
+import org.thymeleaf.context.Context;
+import org.thymeleaf.spring6.SpringTemplateEngine;
 
 /**
- * Transactional email service — powered by Brevo SMTP relay in UAT/prod.
+ * Transactional email service — HTML emails via Brevo SMTP relay in UAT/prod.
  *
  * Dev fallback: if MAIL_USERNAME is blank, all links are logged to the console
- * so the flow can be tested without a real SMTP account.
+ * so the invite/reset flow can be tested without a real SMTP account.
  *
  * Brevo setup (dashboard.brevo.com):
  *   SMTP & API → SMTP → Generate SMTP key
@@ -25,7 +28,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class EmailService {
 
-    private final JavaMailSender mailSender;
+    private final JavaMailSender   mailSender;
+    private final SpringTemplateEngine templateEngine;
 
     @Value("${app.base-url:http://localhost:8080}")
     private String baseUrl;
@@ -36,8 +40,9 @@ public class EmailService {
     @Value("${app.mail.from:${spring.mail.username:}}")
     private String fromAddress;
 
-    public EmailService(JavaMailSender mailSender) {
-        this.mailSender = mailSender;
+    public EmailService(JavaMailSender mailSender, SpringTemplateEngine templateEngine) {
+        this.mailSender     = mailSender;
+        this.templateEngine = templateEngine;
     }
 
     private boolean isMailConfigured() {
@@ -54,22 +59,13 @@ public class EmailService {
             return;
         }
 
-        send(toEmail,
-             "Reset your Harvest Technologies password",
-             """
-             Hi,
+        Context ctx = new Context();
+        ctx.setVariable("resetLink", link);
 
-             You requested a password reset for your Harvest Technologies Forex Platform account.
-
-             Click the link below to set a new password. This link is valid for 24 hours:
-
-             %s
-
-             If you didn't request this, you can safely ignore this email — your password has not been changed.
-
-             — The Harvest Technologies Team
-               AI Forex Trading Platform
-             """.formatted(link));
+        sendHtml(toEmail,
+                 "Reset your Harvest Technologies password",
+                 "email/password-reset",
+                 ctx);
     }
 
     // ── Invite new user ───────────────────────────────────────────────────────
@@ -82,39 +78,33 @@ public class EmailService {
             return;
         }
 
-        send(toEmail,
-             "You've been invited to Harvest Technologies Forex Platform",
-             """
-             Hi,
+        Context ctx = new Context();
+        ctx.setVariable("inviteLink", link);
 
-             You have been invited to join the Harvest Technologies AI Forex Trading Platform.
-
-             Click the link below to set up your account and choose your password.
-             This link is valid for 72 hours:
-
-             %s
-
-             If you weren't expecting this invitation, you can safely ignore this email.
-
-             — The Harvest Technologies Team
-               AI Forex Trading Platform
-             """.formatted(link));
+        sendHtml(toEmail,
+                 "You've been invited to Harvest Technologies",
+                 "email/invite",
+                 ctx);
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────────
 
-    private void send(String to, String subject, String body) {
+    private void sendHtml(String to, String subject, String templateName, Context ctx) {
         try {
-            SimpleMailMessage msg = new SimpleMailMessage();
-            msg.setFrom("Harvest Technologies <" + fromAddress + ">");
-            msg.setTo(to);
-            msg.setSubject(subject);
-            msg.setText(body);
+            String html = templateEngine.process(templateName, ctx);
+
+            MimeMessage msg = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(msg, false, "UTF-8");
+            helper.setFrom("Harvest Technologies <" + fromAddress + ">");
+            helper.setTo(to);
+            helper.setSubject(subject);
+            helper.setText(html, true); // true = HTML
+
             mailSender.send(msg);
             log.info("Email sent → {} | subject: {}", to, subject);
-        } catch (MailException e) {
+        } catch (MailException | jakarta.mail.MessagingException e) {
             log.error("Failed to send email to {}: {}", to, e.getMessage());
-            // Don't propagate — caller already shows a neutral UI message
+            // Don't propagate — caller shows a neutral UI message regardless
         }
     }
 

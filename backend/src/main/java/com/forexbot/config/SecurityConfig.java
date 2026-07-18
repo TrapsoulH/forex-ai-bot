@@ -46,6 +46,7 @@ public class SecurityConfig {
             .userDetailsService(userDetailsService)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+                .requestMatchers("/", "/features", "/pricing", "/about", "/error").permitAll()
                 .requestMatchers("/login", "/register", "/forgot-password", "/reset-password").permitAll()
                 .requestMatchers("/invite/**").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
@@ -54,7 +55,7 @@ public class SecurityConfig {
             )
             .formLogin(form -> form
                 .loginPage("/login")
-                .defaultSuccessUrl("/", true)
+                .defaultSuccessUrl("/dashboard", true)
                 .failureUrl("/login?error")
                 .permitAll()
             )
@@ -72,7 +73,7 @@ public class SecurityConfig {
         if (isOAuth2Enabled()) {
             http.oauth2Login(oauth -> oauth
                 .loginPage("/login")
-                .defaultSuccessUrl("/", true)
+                .defaultSuccessUrl("/dashboard", true)
                 .userInfoEndpoint(u -> u.userService(oauth2UserService))
             );
             log.info("Security: Google OAuth2 enabled");

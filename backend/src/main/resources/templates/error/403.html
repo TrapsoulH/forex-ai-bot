@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>403 — Access Denied · Harvest Technologies</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center">
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div style="position:relative;z-index:1;max-width:440px">
+  <div style="width:72px;height:72px;border-radius:50%;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#f87171">
+    <i data-lucide="shield-off" style="width:32px;height:32px"></i>
+  </div>
+  <div style="font-size:4rem;font-weight:900;line-height:1;color:rgba(248,113,113,.8);margin-bottom:8px">403</div>
+  <h1 style="font-size:1.4rem;font-weight:700;color:#f1f5f9;margin-bottom:12px">Access denied</h1>
+  <p style="color:#64748b;font-size:.9rem;line-height:1.6;margin-bottom:32px">
+    You don't have permission to view this page. If you think this is a mistake, contact your admin.
+  </p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a th:href="@{/dashboard}" class="btn btn-primary btn-md"><i data-lucide="layout-dashboard"></i> Go to dashboard</a>
+    <a th:href="@{/login}" class="btn btn-outline btn-md"><i data-lucide="log-in"></i> Sign in</a>
+  </div>
+</div>
+
+<script>document.addEventListener('DOMContentLoaded', () => lucide.createIcons());</script>
+</body>
+</html>

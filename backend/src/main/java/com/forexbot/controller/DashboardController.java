@@ -40,7 +40,7 @@ public class DashboardController {
         this.mt5Client        = mt5Client;
     }
 
-    @GetMapping("/")
+    @GetMapping("/dashboard")
     public String dashboard(Model model) {
         Map<?, ?> accountInfo = null;
         try {
@@ -74,14 +74,14 @@ public class DashboardController {
     public String enableBot() {
         log.info("Bot ENABLE requested via dashboard");
         pollerService.enable();
-        return "redirect:/";
+        return "redirect:/dashboard";
     }
 
     @PostMapping("/bot/disable")
     public String disableBot() {
         log.info("Bot DISABLE requested via dashboard");
         pollerService.disable();
-        return "redirect:/";
+        return "redirect:/dashboard";
     }
 
     @PostMapping("/trade/{id}/close")
@@ -93,6 +93,6 @@ public class DashboardController {
         } catch (Exception e) {
             log.error("Failed to close trade #{}: {}", id, e.getMessage());
         }
-        return "redirect:/";
+        return "redirect:/dashboard";
     }
 }

@@ -24,7 +24,7 @@
       <span class="logo-tag">AI Forex</span>
     </a>
 
-    <a th:href="@{/}" class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/dashboard}" class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
     <a th:href="@{/admin/users}" class="nav-a active nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
 
     <div style="flex:1"></div>
@@ -46,7 +46,7 @@
   </div>
 
   <div class="mob-drawer" id="mob-drawer">
-    <a href="/" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/dashboard}" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
     <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
     <hr class="mob-drawer-sep"/>
     <form th:action="@{/logout}" method="post" style="margin:0">
