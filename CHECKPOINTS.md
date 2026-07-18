@@ -90,6 +90,21 @@ Track your progress through each phase. Check off items as you complete them.
 
 ---
 
+## Phase 4b — UI Polish (SaaS Design System)
+
+**Goal:** Dashboard and auth screens look like a real SaaS product.
+
+- [x] **CP-UI-01** Harvest Technologies design system created (`static/css/app.css`) — Outfit font, navy/blue/green palette, glass cards, animations
+- [x] **CP-UI-02** Login page revamped — glass card, orbs, Lucide icons, Google OAuth + username/password
+- [x] **CP-UI-03** Register page created — full name + username grid, live password strength indicators, Google OAuth
+- [x] **CP-UI-04** Forgot password page created — email field, anti-enumeration success message
+- [x] **CP-UI-05** Reset password page created — token via URL, live strength indicators, error states
+- [x] **CP-UI-06** Dashboard revamped — glass stat cards, topnav with mobile hamburger, proper badge system, Lucide icons
+- [ ] **CP-UI-07** Google OAuth2 credentials wired up (see Notes)
+- [ ] **CP-UI-08** feature/ui-polish branch merged to main via PR
+
+---
+
 ## Notes
 
 ```
@@ -105,4 +120,10 @@ CP-15: H1 signals all HOLD over weekend (expected — forex markets closed Sat/S
        London session Monday (08:00–12:00 UTC).
 CP-23: Models trained on 4,801 H1 candles each (~7 months of data).
        USDJPY best accuracy at 70%. Retrain monthly or after significant market regime change.
+CP-UI-07: Google OAuth2 setup steps:
+  1. Go to https://console.cloud.google.com → APIs & Services → Credentials
+  2. Create OAuth 2.0 Client ID (Web application)
+  3. Add Authorized redirect URI: http://localhost:8080/login/oauth2/code/google
+  4. Set env vars: GOOGLE_CLIENT_ID=... and GOOGLE_CLIENT_SECRET=...
+  5. Add to .env or application-dev.yml (never commit credentials)
 ```

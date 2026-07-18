@@ -1,29 +1,35 @@
-# ── PROD profile — GCP Cloud Run + MetaApi ────────────────────
-# All values come from GCP environment variables / Secret Manager.
-# Never hardcode credentials here.
+# ── PROD profile — GCP Cloud Run ───────────────────────────────────────────────
+# All secrets are set as Cloud Run environment variables — nothing hardcoded here.
+# ⚠️  Only activate after UAT sign-off and ≥ 100 profitable paper trades.
 
 spring:
   datasource:
     url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?useSSL=true&serverTimezone=UTC
-    username: ${DB_USER}
-    password: ${DB_PASSWORD}
+    # username / password come from DB_USER / DB_PASSWORD (base application.yml)
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope: email, profile
+
+  thymeleaf:
+    cache: true
 
 services:
   mt5-bridge:
-    url: ${MT5_BRIDGE_URL}   # MetaApi REST endpoint
+    url: ${MT5_BRIDGE_URL}
   signal-engine:
     url: ${SIGNAL_ENGINE_URL}
 
 bot:
-  paper-trading: false        # LIVE trading — only enable after UAT sign-off
-  scan-interval-seconds: ${SCAN_INTERVAL:60}
-  default-volume: ${DEFAULT_VOLUME:0.01}
-  sl-pips: ${SL_PIPS:30.0}
-  tp-pips: ${TP_PIPS:60.0}
-  max-open-trades: ${MAX_OPEN_TRADES:3}
-  symbols: ${SYMBOLS:EURUSD,GBPUSD,USDJPY,AUDUSD}
+  paper-trading: ${PAPER_TRADING:false}   # LIVE trading — must be explicitly false in Cloud Run env
 
 logging:
   level:
-    com.forexbot: WARN
+    com.forexbot: INFO
     org.springframework.web: WARN
+    org.flywaydb: WARN

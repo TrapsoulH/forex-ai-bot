@@ -12,8 +12,15 @@ signal-engine/models/
 
 # Environment secrets — never commit these
 .env
-backend/src/main/resources/application-dev.yml
+# .env.example IS committed — it's the template with fake values
+
+# Local overrides (if you need machine-specific tweaks beyond .env)
 backend/src/main/resources/application-local.yml
+
+# application-dev.yml is gitignored because it may contain local path tweaks.
+# It has NO secrets — all secrets live in .env.
+# New team members: copy application-dev.yml.example (if present) or create from scratch.
+backend/src/main/resources/application-dev.yml
 
 # Java / Maven
 backend/target/
