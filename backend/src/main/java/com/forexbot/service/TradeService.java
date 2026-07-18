@@ -145,6 +145,17 @@ public class TradeService {
         trade.setClosedAt(Instant.now());
         Trade saved = tradeRepository.save(trade);
         log.info("Trade #{} marked CLOSED in DB", saved.getId());
+
+        // Notify admins — fire-and-forget, never blocks the close response
+        try {
+            userRepository.findAll().stream()
+                .filter(u -> u.getEmail() != null && !u.getEmail().isBlank())
+                .filter(u -> u.getRole() == com.forexbot.model.User.Role.ADMIN)
+                .forEach(u -> emailService.sendTradeClosed(u.getEmail(), saved));
+        } catch (Exception e) {
+            log.error("Failed to send trade close notification emails: {}", e.getMessage());
+        }
+
         return saved;
     }
 }

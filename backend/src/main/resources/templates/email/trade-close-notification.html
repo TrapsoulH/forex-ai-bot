@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title th:text="|${outcome} · ${trade.symbol} — Trade closed | Harvest Technologies|">Trade Closed</title>
+</head>
+<body style="margin:0;padding:0;background:#060d18;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#f1f5f9">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#060d18;padding:40px 16px">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
+
+        <!-- ── Header ── -->
+        <tr>
+          <td style="padding-bottom:24px;text-align:center">
+            <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:16px">
+              <div style="width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);border-radius:9px;display:inline-block;vertical-align:middle;line-height:36px;text-align:center;font-weight:900;font-size:18px;color:#fff">⚡</div>
+              <span style="font-weight:800;font-size:1.1rem;color:#f1f5f9;vertical-align:middle">Harvest <span style="background:linear-gradient(135deg,#3b82f6,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Technologies</span></span>
+            </div>
+            <div style="font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase"
+                 th:style="${outcome == 'WIN'} ? 'color:#10b981' : 'color:#ef4444'"
+                 th:text="${outcome == 'WIN'} ? 'Trade closed — win' : 'Trade closed — loss'">Trade closed</div>
+          </td>
+        </tr>
+
+        <!-- ── Outcome banner ── -->
+        <tr>
+          <td style="padding-bottom:24px">
+            <div th:style="${outcome == 'WIN'}
+                           ? 'background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.25);border-radius:14px;padding:24px;text-align:center'
+                           : 'background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);border-radius:14px;padding:24px;text-align:center'">
+
+              <!-- Symbol + direction + outcome -->
+              <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+                <span style="font-size:1.5rem;font-weight:900;color:#f1f5f9;font-family:monospace"
+                      th:text="${trade.symbol}">EURUSD</span>
+                <span style="font-size:.9rem;font-weight:800;padding:5px 14px;border-radius:100px;letter-spacing:.05em"
+                      th:style="${trade.direction == 'BUY'}
+                                 ? 'background:rgba(16,185,129,.2);color:#34d399;border:1px solid rgba(16,185,129,.4)'
+                                 : 'background:rgba(239,68,68,.2);color:#f87171;border:1px solid rgba(239,68,68,.4)'"
+                      th:text="${trade.direction}">BUY</span>
+                <span style="font-size:.9rem;font-weight:800;padding:5px 14px;border-radius:100px;letter-spacing:.06em;text-transform:uppercase"
+                      th:style="${outcome == 'WIN'}
+                                 ? 'background:rgba(16,185,129,.25);color:#6ee7b7;border:1px solid rgba(16,185,129,.5)'
+                                 : 'background:rgba(239,68,68,.25);color:#fca5a5;border:1px solid rgba(239,68,68,.5)'"
+                      th:text="${outcome}">WIN</span>
+              </div>
+
+              <!-- Profit amount — large -->
+              <div style="font-size:2.2rem;font-weight:900;font-family:monospace;margin-bottom:6px"
+                   th:style="${outcome == 'WIN'} ? 'color:#34d399' : 'color:#f87171'"
+                   th:text="${formattedProfit}">+12.50</div>
+              <div style="font-size:.75rem;font-weight:600;color:#475569">USD profit / loss</div>
+
+              <!-- Paper badge -->
+              <div th:if="${trade.paperTrade}" style="margin-top:10px">
+                <span style="font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25);padding:3px 10px;border-radius:100px">Paper trade</span>
+              </div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ── Trade detail grid ── -->
+        <tr>
+          <td style="padding-bottom:24px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <!-- Close price -->
+                <td width="31%" style="background:rgba(13,31,53,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px;text-align:center">
+                  <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:5px">Close Price</div>
+                  <div style="font-size:1.2rem;font-weight:800;color:#f1f5f9;font-family:monospace"
+                       th:text="${trade.closePrice != null ? trade.closePrice : '—'}">1.08720</div>
+                </td>
+                <td width="3%"></td>
+                <!-- Volume -->
+                <td width="31%" style="background:rgba(13,31,53,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px;text-align:center">
+                  <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:5px">Volume</div>
+                  <div style="font-size:1.2rem;font-weight:800;color:#f1f5f9;font-family:monospace"
+                       th:text="${trade.volume}">0.01</div>
+                  <div style="font-size:.7rem;color:#334155;margin-top:3px">Lots</div>
+                </td>
+                <td width="3%"></td>
+                <!-- Duration -->
+                <td width="32%" style="background:rgba(13,31,53,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px;text-align:center">
+                  <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:5px">Duration</div>
+                  <div style="font-size:1.2rem;font-weight:800;color:#f1f5f9;font-family:monospace"
+                       th:text="${duration}">2h 15m</div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── Open / close timestamps ── -->
+        <tr>
+          <td style="padding-bottom:24px">
+            <div style="background:rgba(13,31,53,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 18px">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="font-size:.75rem;color:#475569;font-weight:600;text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px" colspan="2">Trade timeline</td>
+                </tr>
+                <tr>
+                  <td style="font-size:.78rem;color:#64748b;padding-bottom:6px">Opened</td>
+                  <td style="font-size:.82rem;font-weight:700;color:#94a3b8;font-family:monospace;text-align:right;padding-bottom:6px"
+                      th:text="${openedAt}">18 Jul 2026 14:00 UTC</td>
+                </tr>
+                <tr>
+                  <td style="font-size:.78rem;color:#64748b">Closed</td>
+                  <td style="font-size:.82rem;font-weight:700;color:#94a3b8;font-family:monospace;text-align:right"
+                      th:text="${closedAt}">18 Jul 2026 16:15 UTC</td>
+                </tr>
+                <tr th:if="${trade.openPrice != null}">
+                  <td style="font-size:.78rem;color:#64748b;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)">Open price</td>
+                  <td style="font-size:.82rem;font-weight:700;color:#94a3b8;font-family:monospace;text-align:right;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)"
+                      th:text="${trade.openPrice}">1.08500</td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ── CTA ── -->
+        <tr>
+          <td style="text-align:center;padding-bottom:36px">
+            <a th:href="${dashboardUrl}"
+               style="display:inline-block;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:.95rem">
+              View on dashboard
+            </a>
+          </td>
+        </tr>
+
+        <!-- ── Footer ── -->
+        <tr>
+          <td style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)">
+            <p style="font-size:.75rem;color:#1e3a5f;margin:0">
+              Harvest Technologies · AI Forex Platform<br/>
+              You're receiving this because you have an account on this platform.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
