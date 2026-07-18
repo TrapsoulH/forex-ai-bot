@@ -1,5 +1,6 @@
 package com.forexbot.controller;
 
+import com.forexbot.dto.AcceptInviteForm;
 import com.forexbot.dto.ForgotPasswordForm;
 import com.forexbot.dto.RegisterForm;
 import com.forexbot.dto.ResetPasswordForm;
@@ -125,6 +126,48 @@ public class AuthController {
             model.addAttribute("error", e.getMessage());
             model.addAttribute("token", form.getToken());
             return "auth/reset-password";
+        }
+    }
+
+    // ── Accept invite ─────────────────────────────────────────────────────────
+
+    @GetMapping("/invite/accept")
+    public String acceptInvitePage(@RequestParam String token, Model model) {
+        Optional<PasswordResetToken> opt = tokenRepository.findByToken(token);
+
+        if (opt.isEmpty() || opt.get().isUsed() || opt.get().isExpired()) {
+            model.addAttribute("error",
+                "This invite link is invalid or has expired. Please ask your admin to resend the invitation.");
+            return "auth/invite-accept";
+        }
+
+        AcceptInviteForm form = new AcceptInviteForm();
+        form.setToken(token);
+        model.addAttribute("form", form);
+        model.addAttribute("email", opt.get().getUser().getEmail());
+        return "auth/invite-accept";
+    }
+
+    @PostMapping("/invite/accept")
+    public String acceptInvite(@Valid @ModelAttribute("form") AcceptInviteForm form,
+                               BindingResult result,
+                               Model model,
+                               RedirectAttributes redirectAttrs) {
+        if (result.hasErrors()) {
+            // Re-fetch email for the form header
+            tokenRepository.findByToken(form.getToken())
+                    .ifPresent(t -> model.addAttribute("email", t.getUser().getEmail()));
+            return "auth/invite-accept";
+        }
+        try {
+            userService.acceptInvite(form);
+            redirectAttrs.addFlashAttribute("accountReady", true);
+            return "redirect:/login";
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("error", e.getMessage());
+            tokenRepository.findByToken(form.getToken())
+                    .ifPresent(t -> model.addAttribute("email", t.getUser().getEmail()));
+            return "auth/invite-accept";
         }
     }
 }
