@@ -17,8 +17,9 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class MarketSchedulerService {
 
-    private final MarketHoursService    marketHours;
-    private final SignalPollerService   pollerService;
+    private final MarketHoursService  marketHours;
+    private final SignalPollerService pollerService;
+    private final SseService          sseService;
 
     @Scheduled(fixedDelay = 900_000)   // every 15 minutes
     public void syncWithMarketHours() {
@@ -28,9 +29,11 @@ public class MarketSchedulerService {
         if (!open && running) {
             log.info("Market closed — auto-disabling signal poller");
             pollerService.disable();
+            sseService.broadcastStatus(); // tell all open dashboard tabs immediately
         } else if (open && !running) {
             log.info("Market open — auto-enabling signal poller");
             pollerService.enable();
+            sseService.broadcastStatus(); // tell all open dashboard tabs immediately
         }
     }
 }

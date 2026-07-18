@@ -69,6 +69,15 @@ public class SseService {
         broadcast("trade", "{\"type\":\"trade\"}");
     }
 
+    /**
+     * Broadcast a "status" event — triggers the frontend to refresh bot enabled/disabled
+     * state and market-open state without a page reload.
+     * Called by MarketSchedulerService when the bot is auto-enabled or auto-disabled.
+     */
+    public void broadcastStatus() {
+        broadcast("status", "{\"type\":\"status\"}");
+    }
+
     // ── Internal ──────────────────────────────────────────────────────────────
 
     private void broadcast(String event, String data) {

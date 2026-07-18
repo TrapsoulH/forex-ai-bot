@@ -24,6 +24,12 @@ public interface TradeRepository extends JpaRepository<Trade, Long> {
     @Query("SELECT COUNT(t) FROM Trade t WHERE t.status = 'OPEN'")
     long countOpen();
 
+    // ── Analytics queries ──────────────────────────────────────────────────────
+
+    /** All closed trades sorted oldest-first — for equity curve and scatter chart. */
+    @Query("SELECT t FROM Trade t WHERE t.status = 'CLOSED' ORDER BY t.closedAt ASC")
+    List<Trade> findAllClosedOrdered();
+
     // ── Weekly review queries ──────────────────────────────────────────────────
 
     @Query("SELECT t FROM Trade t WHERE t.openedAt > :since ORDER BY t.openedAt DESC")

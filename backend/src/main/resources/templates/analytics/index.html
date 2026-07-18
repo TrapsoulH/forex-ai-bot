@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Analytics — Harvest Technologies</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- ── Nav ── -->
+<nav class="topnav" style="position:relative">
+  <div class="topnav-inner">
+    <a class="topnav-logo" th:href="@{/dashboard}">
+      <div class="logo-box"><i data-lucide="zap"></i></div>
+      <span class="logo-name">Harvest <span class="gradient-text">Technologies</span></span>
+      <span class="logo-tag">AI Forex</span>
+    </a>
+
+    <a th:href="@{/dashboard}"  class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/analytics}"  class="nav-a active nav-desktop-only"><i data-lucide="line-chart"></i> Analytics</a>
+    <a th:href="@{/admin/users}" class="nav-a nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+    <a th:href="@{/settings/bot}" class="nav-a nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Settings</a>
+
+    <div style="flex:1"></div>
+
+    <span th:if="${!marketOpen}" class="badge b-closed nav-desktop-only" style="margin-right:8px">
+      <span class="dot dot-grey"></span> Market Closed
+    </span>
+    <span th:if="${marketOpen and botEnabled}" class="badge b-running nav-desktop-only" style="margin-right:8px">
+      <span class="dot dot-green"></span> Bot Running
+    </span>
+    <span th:if="${marketOpen and !botEnabled}" class="badge b-stopped nav-desktop-only" style="margin-right:8px">
+      <span class="dot dot-red"></span> Bot Stopped
+    </span>
+
+    <a th:href="@{/account}" class="nav-user-pill nav-desktop-only" style="margin-right:8px;text-decoration:none">
+      <i data-lucide="user" style="width:13px;height:13px"></i>
+      <span sec:authentication="name">user</span>
+    </a>
+
+    <form th:action="@{/logout}" method="post" style="margin:0" class="nav-desktop-only">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="nav-logout"><i data-lucide="log-out"></i> Sign out</button>
+    </form>
+
+    <button class="mob-ham" id="ham" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<div class="mob-overlay" id="mob-overlay"></div>
+<div class="mob-drawer" id="mob-drawer" aria-label="Navigation menu">
+  <div class="mob-drawer-header">
+    <div style="display:flex;align-items:center;gap:9px">
+      <div class="logo-box" style="width:28px;height:28px;border-radius:8px">
+        <i data-lucide="zap" style="width:13px;height:13px;color:#fff"></i>
+      </div>
+      <span style="font-size:.85rem;font-weight:700;color:#f1f5f9">Harvest <span class="gradient-text">Technologies</span></span>
+    </div>
+    <button class="mob-close" id="mob-close" aria-label="Close menu"><i data-lucide="x"></i></button>
+  </div>
+  <nav class="mob-nav">
+    <a th:href="@{/dashboard}"   class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/analytics}"   class="mob-drawer-a active"><i data-lucide="line-chart"></i> Analytics</a>
+    <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+    <a th:href="@{/settings/bot}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Bot Settings</a>
+    <a th:href="@{/account}"     class="mob-drawer-a"><i data-lucide="user"></i> Account</a>
+  </nav>
+  <div class="mob-drawer-footer">
+    <div class="mob-drawer-status">
+      <span th:if="${!marketOpen}" class="badge b-closed"><span class="dot dot-grey"></span> Market Closed</span>
+      <span th:if="${marketOpen and botEnabled}" class="badge b-running"><span class="dot dot-green"></span> Bot Running</span>
+      <span th:if="${marketOpen and !botEnabled}" class="badge b-stopped"><span class="dot dot-red"></span> Bot Stopped</span>
+    </div>
+    <hr class="mob-drawer-sep"/>
+    <a th:href="@{/account}" class="nav-user-pill" style="text-decoration:none;width:fit-content">
+      <i data-lucide="user" style="width:13px;height:13px"></i>
+      <span sec:authentication="name">user</span>
+    </a>
+    <form th:action="@{/logout}" method="post" style="margin:0">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="mob-drawer-a danger"><i data-lucide="log-out"></i> Sign out</button>
+    </form>
+  </div>
+</div>
+<div class="nav-spacer"></div>
+
+<main class="page">
+
+  <!-- Page header -->
+  <div class="page-header au">
+    <div class="ic ic-md ic-blue"><i data-lucide="line-chart"></i></div>
+    <div>
+      <h1 class="page-title">Analytics</h1>
+      <p class="muted" style="font-size:.85rem;margin-top:2px">Equity curve · win rate trend · confidence vs outcome</p>
+    </div>
+  </div>
+
+  <!-- ── No data state ── -->
+  <div th:unless="${hasData}"
+       style="text-align:center;padding:60px 24px;background:rgba(13,31,53,.5);border:1px solid rgba(255,255,255,.06);border-radius:16px;margin-bottom:32px">
+    <div class="ic ic-md ic-blue" style="margin:0 auto 16px"><i data-lucide="bar-chart-2"></i></div>
+    <h2 style="font-size:1.1rem;font-weight:700;color:#f1f5f9;margin:0 0 8px">No trade data yet</h2>
+    <p class="muted" style="font-size:.85rem;max-width:400px;margin:0 auto">
+      Charts appear once the bot closes its first trades. Check back after Sunday's market open — signals are already accumulating.
+    </p>
+  </div>
+
+  <!-- ── Summary stat cards ── -->
+  <div th:if="${hasData}"
+       style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:32px">
+
+    <div class="stat-card au1">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Total Trades</span>
+        <div class="ic ic-sm ic-blue"><i data-lucide="layers"></i></div>
+      </div>
+      <div class="stat-card-value" th:text="${totalTrades}">0</div>
+      <div class="stat-card-sub" th:text="|${winCount}W · ${lossCount}L|">0W · 0L</div>
+    </div>
+
+    <div class="stat-card au2">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Win Rate</span>
+        <div class="ic ic-sm ic-green"><i data-lucide="target"></i></div>
+      </div>
+      <div class="stat-card-value"
+           th:style="${winRate >= '50.0'} ? 'color:#34d399' : 'color:#f87171'"
+           th:text="${winRate + '%'}">0%</div>
+      <div class="stat-card-sub">Closed trades</div>
+    </div>
+
+    <div class="stat-card au3">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Total P&amp;L</span>
+        <div class="ic ic-sm" th:classappend="${pnlPositive} ? 'ic-green' : 'ic-red'">
+          <i data-lucide="trending-up"></i>
+        </div>
+      </div>
+      <div class="stat-card-value"
+           th:style="${pnlPositive} ? 'color:#34d399' : 'color:#f87171'"
+           th:text="${(pnlPositive ? '+' : '') + totalPnl}">+0.00</div>
+      <div class="stat-card-sub">USD</div>
+    </div>
+
+    <div class="stat-card au4">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Avg Win</span>
+        <div class="ic ic-sm ic-green"><i data-lucide="arrow-up-right"></i></div>
+      </div>
+      <div class="stat-card-value" style="color:#34d399" th:text="${'+' + avgWin}">+0.00</div>
+      <div class="stat-card-sub" style="color:#f87171" th:text="${avgLoss}">0.00</div>
+    </div>
+
+  </div>
+
+  <!-- ── Equity Curve ── -->
+  <div th:if="${hasData}" class="gcard au2" style="padding:24px;margin-bottom:24px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div class="ic ic-sm ic-green"><i data-lucide="trending-up"></i></div>
+      <div>
+        <div style="font-size:.95rem;font-weight:700;color:#f1f5f9">Equity Curve</div>
+        <div class="muted" style="font-size:.75rem;margin-top:1px">Cumulative P&amp;L across closed trades</div>
+      </div>
+    </div>
+    <div style="position:relative;height:260px">
+      <canvas id="equityChart"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Win Rate Trend + Confidence Scatter side by side ── -->
+  <div th:if="${hasData}"
+       style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px">
+
+    <!-- Win rate trend -->
+    <div class="gcard au3" style="padding:24px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <div class="ic ic-sm ic-blue"><i data-lucide="bar-chart-2"></i></div>
+        <div>
+          <div style="font-size:.95rem;font-weight:700;color:#f1f5f9">Win Rate by Day</div>
+          <div class="muted" style="font-size:.75rem;margin-top:1px">% of winning trades per day</div>
+        </div>
+      </div>
+      <div style="position:relative;height:220px">
+        <canvas id="winRateChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Confidence scatter -->
+    <div class="gcard au4" style="padding:24px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <div class="ic ic-sm" style="background:rgba(139,92,246,.15);color:#a78bfa"><i data-lucide="scatter-chart"></i></div>
+        <div>
+          <div style="font-size:.95rem;font-weight:700;color:#f1f5f9">Confidence vs Outcome</div>
+          <div class="muted" style="font-size:.75rem;margin-top:1px">Does higher confidence = better result?</div>
+        </div>
+      </div>
+      <div style="position:relative;height:220px">
+        <canvas id="scatterChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- Chart data injected by Thymeleaf -->
+<script th:inline="javascript">
+  /*<![CDATA[*/
+  const equityLabels = /*[[${equityLabelsJson}]]*/ '[]';
+  const equityValues = /*[[${equityValuesJson}]]*/ '[]';
+  const wrLabels     = /*[[${wrLabelsJson}]]*/ '[]';
+  const wrValues     = /*[[${wrValuesJson}]]*/ '[]';
+  const scatterRaw   = /*[[${scatterJson}]]*/ '[]';
+  /*]]>*/
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+
+  // Mobile drawer
+  const ham = document.getElementById('ham');
+  const drawer = document.getElementById('mob-drawer');
+  const overlay = document.getElementById('mob-overlay');
+  const mobClose = document.getElementById('mob-close');
+  function openDrawer()  { drawer.classList.add('open'); overlay.classList.add('open'); ham.classList.add('open'); document.body.style.overflow='hidden'; }
+  function closeDrawer() { drawer.classList.remove('open'); overlay.classList.remove('open'); ham.classList.remove('open'); document.body.style.overflow=''; }
+  ham?.addEventListener('click', () => drawer.classList.contains('open') ? closeDrawer() : openDrawer());
+  overlay?.addEventListener('click', closeDrawer);
+  mobClose?.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
+
+  // Parse JSON strings injected by Thymeleaf
+  const eLabels = JSON.parse(equityLabels);
+  const eValues = JSON.parse(equityValues);
+  const wLabels = JSON.parse(wrLabels);
+  const wValues = JSON.parse(wrValues);
+  const scatter = JSON.parse(scatterRaw);
+
+  // Shared Chart.js defaults
+  Chart.defaults.color = '#475569';
+  Chart.defaults.font.family = "'Outfit', sans-serif";
+
+  const gridColor  = 'rgba(255,255,255,0.05)';
+  const tickColor  = '#334155';
+
+  // ── Equity Curve ──────────────────────────────────────────────
+  const equityCtx = document.getElementById('equityChart');
+  if (equityCtx && eLabels.length) {
+    const isPositive = eValues.length && eValues[eValues.length - 1] >= 0;
+    new Chart(equityCtx, {
+      type: 'line',
+      data: {
+        labels: eLabels,
+        datasets: [{
+          label: 'Cumulative P&L (USD)',
+          data: eValues,
+          borderColor: isPositive ? '#10b981' : '#ef4444',
+          backgroundColor: isPositive ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4,
+          pointBackgroundColor: isPositive ? '#10b981' : '#ef4444',
+          pointHoverRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(4,10,24,0.95)',
+            borderColor: 'rgba(255,255,255,0.08)',
+            borderWidth: 1,
+            callbacks: {
+              label: ctx => ' ' + (ctx.raw >= 0 ? '+' : '') + ctx.raw.toFixed(2) + ' USD'
+            }
+          }
+        },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: tickColor } },
+          y: {
+            grid: { color: gridColor },
+            ticks: {
+              color: tickColor,
+              callback: v => (v >= 0 ? '+' : '') + v.toFixed(2)
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // ── Win Rate Bar Chart ─────────────────────────────────────────
+  const wrCtx = document.getElementById('winRateChart');
+  if (wrCtx && wLabels.length) {
+    new Chart(wrCtx, {
+      type: 'bar',
+      data: {
+        labels: wLabels,
+        datasets: [{
+          label: 'Win Rate %',
+          data: wValues,
+          backgroundColor: wValues.map(v => v >= 50 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.6)'),
+          borderColor:     wValues.map(v => v >= 50 ? '#10b981' : '#ef4444'),
+          borderWidth: 1,
+          borderRadius: 4,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(4,10,24,0.95)',
+            borderColor: 'rgba(255,255,255,0.08)',
+            borderWidth: 1,
+            callbacks: { label: ctx => ' ' + ctx.raw + '%' }
+          }
+        },
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: tickColor } },
+          y: {
+            grid: { color: gridColor },
+            ticks: { color: tickColor, callback: v => v + '%' },
+            min: 0, max: 100,
+            // 50% reference line
+            afterDataLimits: scale => { scale.max = 100; }
+          }
+        }
+      }
+    });
+  }
+
+  // ── Confidence Scatter ─────────────────────────────────────────
+  const scatterCtx = document.getElementById('scatterChart');
+  if (scatterCtx && scatter.length) {
+    new Chart(scatterCtx, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Win',
+          data:  scatter.filter(p => p.win).map(p => ({ x: p.x, y: p.y })),
+          backgroundColor: 'rgba(16,185,129,0.7)',
+          borderColor: '#10b981',
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        }, {
+          label: 'Loss',
+          data: scatter.filter(p => !p.win).map(p => ({ x: p.x, y: p.y })),
+          backgroundColor: 'rgba(239,68,68,0.6)',
+          borderColor: '#ef4444',
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            labels: { color: '#64748b', boxWidth: 10, padding: 16, font: { size: 12 } }
+          },
+          tooltip: {
+            backgroundColor: 'rgba(4,10,24,0.95)',
+            borderColor: 'rgba(255,255,255,0.08)',
+            borderWidth: 1,
+            callbacks: {
+              label: ctx => {
+                const p = scatter.filter(s => s.x == ctx.raw.x && s.y == ctx.raw.y)[0];
+                return ` ${p?.symbol ?? ''} · conf ${ctx.raw.x}% · P&L ${ctx.raw.y >= 0 ? '+' : ''}${ctx.raw.y}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: gridColor },
+            ticks: { color: tickColor, callback: v => v + '%' },
+            title: { display: true, text: 'Signal confidence (%)', color: '#334155', font: { size: 11 } }
+          },
+          y: {
+            grid: { color: gridColor },
+            ticks: { color: tickColor, callback: v => (v >= 0 ? '+' : '') + v },
+            title: { display: true, text: 'Profit / Loss (USD)', color: '#334155', font: { size: 11 } }
+          }
+        }
+      }
+    });
+  }
+});
+</script>
+</body>
+</html>
