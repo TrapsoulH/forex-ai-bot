@@ -1,15 +1,15 @@
 package com.forexbot.config;
 
+import com.forexbot.service.OAuth2UserServiceImpl;
 import com.forexbot.service.UserDetailsServiceImpl;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Slf4j
@@ -18,14 +18,21 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
+    private final OAuth2UserServiceImpl  oauth2UserService;
 
-    public SecurityConfig(UserDetailsServiceImpl userDetailsService) {
+    @Value("${spring.security.oauth2.client.registration.google.client-id:disabled}")
+    private String googleClientId;
+
+    public SecurityConfig(UserDetailsServiceImpl userDetailsService,
+                          OAuth2UserServiceImpl oauth2UserService) {
         this.userDetailsService = userDetailsService;
+        this.oauth2UserService  = oauth2UserService;
     }
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    private boolean isOAuth2Enabled() {
+        return googleClientId != null
+            && !googleClientId.isBlank()
+            && !googleClientId.equals("disabled");
     }
 
     @Bean
@@ -38,10 +45,9 @@ public class SecurityConfig {
         http
             .userDetailsService(userDetailsService)
             .authorizeHttpRequests(auth -> auth
-                // Public assets and login page
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
-                .requestMatchers("/login", "/login?error", "/login?logout").permitAll()
-                // Everything else requires authentication
+                .requestMatchers("/login", "/register", "/forgot-password", "/reset-password").permitAll()
+                .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
@@ -57,12 +63,21 @@ public class SecurityConfig {
                 .deleteCookies("JSESSIONID")
                 .permitAll()
             )
-            // Allow POST from Thymeleaf forms (CSRF token included automatically)
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/api/**")  // for future REST API clients
+                .ignoringRequestMatchers("/api/**")
             );
 
-        log.info("Security filter chain configured — login page at /login");
+        if (isOAuth2Enabled()) {
+            http.oauth2Login(oauth -> oauth
+                .loginPage("/login")
+                .defaultSuccessUrl("/", true)
+                .userInfoEndpoint(u -> u.userService(oauth2UserService))
+            );
+            log.info("Security: Google OAuth2 enabled");
+        } else {
+            log.info("Security: Google OAuth2 disabled (GOOGLE_CLIENT_ID not set) — username/password only");
+        }
+
         return http.build();
     }
 }
