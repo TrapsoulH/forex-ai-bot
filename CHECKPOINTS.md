@@ -30,7 +30,7 @@ Track your progress through each phase. Check off items as you complete them.
 - [x] **CP-13** Signal scan works: `GET http://localhost:8002/signal/EURUSD` returns a result
 - [x] **CP-14** Bot enabled via dashboard — scan loop starts (confirmed in backend logs)
 - [x] **CP-15** Signals being fetched every 60 seconds for all 4 symbols (HOLD — awaiting trend)
-- [ ] **CP-16** First BUY or SELL signal produced — waiting for H1 trend to form (markets open Sunday evening)
+- [ ] **CP-16** First BUY or SELL signal produced — markets reopen Sunday ~21:00 UTC
 - [ ] **CP-17** First paper trade opened and visible in dashboard open positions
 - [ ] **CP-18** Paper trade manually closed via dashboard Close button
 - [ ] **CP-19** Closed trade appears in trade history with status CLOSED
@@ -61,61 +61,123 @@ Track your progress through each phase. Check off items as you complete them.
 
 ---
 
-## Phase 5 — UAT (MetaApi + GCP)
+## Phase 4b — UI, SaaS Polish & Real-time Features
 
-**Goal:** System running 24/7 on GCP with MetaApi replacing the Windows MT5 bridge.
+**Goal:** Production-quality dashboard, emails, live updates, and per-symbol risk control.
 
-- [ ] **CP-30** MetaApi account created at https://metaapi.cloud (free tier)
-- [ ] **CP-31** MT5 demo account connected to MetaApi
-- [ ] **CP-32** `mt5-bridge` rewritten to use MetaApi REST API (replaces `MetaTrader5` Python package)
-- [ ] **CP-33** All services containerised and pushed to GCP Artifact Registry
-- [ ] **CP-34** Cloud SQL MySQL instance provisioned and Flyway migrations applied
-- [ ] **CP-35** Services deployed to Cloud Run — health checks green
-- [ ] **CP-36** Dashboard accessible at GCP-provisioned URL
-- [ ] **CP-37** Bot enabled on GCP — first signal produced in cloud environment
-- [ ] **CP-38** 48-hour unattended run with paper trades — no crashes or missed scans
+### Auth & Design System
+- [x] **CP-UI-01** Harvest Technologies design system (`static/css/app.css`) — Outfit font, navy/blue/green palette, glass cards, animations
+- [x] **CP-UI-02** Login page — glass card, orbs, Lucide icons, Google OAuth + username/password
+- [x] **CP-UI-03** Register page — full name + username grid, live password strength indicators, Google OAuth
+- [x] **CP-UI-04** Forgot password page — email field, anti-enumeration success message
+- [x] **CP-UI-05** Reset password page — token via URL, live strength indicators, error states
+- [x] **CP-UI-06** Role-aware post-login redirect — admin → `/admin/users`, user → `/dashboard`
+- [ ] **CP-UI-07** Google OAuth2 credentials wired up (see Notes — optional, standalone login works)
+
+### Dashboard & Navigation
+- [x] **CP-UI-08** Dashboard revamped — glass stat cards, topnav with role-aware nav links, proper badge system
+- [x] **CP-UI-09** Mobile slide-in drawer — all app pages (dashboard, admin, bot settings, account) + landing page
+- [x] **CP-UI-10** Scrollable tables — `max-height` + sticky `thead` on all table containers; page no longer scrolls for tables
+- [x] **CP-UI-11** Market auto-detect — `MarketHoursService` drives nav badge (Bot Running / Market Closed / Bot Stopped)
+- [x] **CP-UI-12** Global model advice (`GlobalModelAdvice`) — `botEnabled` / `marketOpen` injected into every template automatically
+
+### Real-time Updates (SSE)
+- [x] **CP-UI-13** `SseService` — `CopyOnWriteArrayList` of `SseEmitter`s, heartbeat on connect, dead-emitter cleanup
+- [x] **CP-UI-14** `SseController` — `GET /api/dashboard/stream` (text/event-stream, auth-protected)
+- [x] **CP-UI-15** `LiveDataController` — `GET /api/live/signals`, `/positions`, `/stats` (JSON endpoints for frontend)
+- [x] **CP-UI-16** `SignalPollerService` broadcasts `signal` and `trade` SSE events after each poll cycle
+- [x] **CP-UI-17** Dashboard `EventSource` JS — auto-reconnect, live signal table, live positions table, live stat cards
+- [x] **CP-UI-18** 30-second hard reload replaced with soft toast — only appears if SSE is not connected
+
+### Email Notifications
+- [x] **CP-UI-19** `EmailService` — Brevo SMTP relay in prod; dev mode logs to console (zero SMTP config needed locally)
+- [x] **CP-UI-20** Invite flow — admin sends email+role only; user sets name+password via 72-hour token link
+- [x] **CP-UI-21** Password reset flow — forgot-password → email → reset page → login (completed manually)
+- [x] **CP-UI-22** Branded email templates — invite, password reset, trade notification, weekly review
+- [x] **CP-UI-23** Trade open email — fires to ADMIN users only on every BUY/SELL (fire-and-forget, never blocks trade)
+- [x] **CP-UI-24** Weekly review email — `WeeklyEmailScheduler` fires every Friday 18:00 UTC; includes signals, trades, P&L, best pair
+- [ ] **CP-UI-25** Trade close email — fires to ADMIN users when a trade is closed (quick win — see pre-Sunday checklist)
+
+### Admin & Settings
+- [x] **CP-UI-26** Admin panel — user list, role changes, enable/disable, self-modification guard
+- [x] **CP-UI-27** Bot settings page — paper mode toggle, scan interval, global SL/TP/volume/max trades, min ML confidence, symbols
+- [x] **CP-UI-28** Per-symbol risk override — individual SL, TP, volume, enabled toggle per pair; live R:R display; `symbol_settings` table (V4 migration)
+- [x] **CP-UI-29** `SignalPollerService` respects per-symbol `enabled` flag — disabled symbols are skipped entirely
+
+### Public Pages & Misc
+- [x] **CP-UI-30** Public landing page — hero, features, how it works, signal preview, CTA sections
+- [x] **CP-UI-31** Route split — `/` public landing, `/dashboard` authenticated app
+- [x] **CP-UI-32** Custom error pages — branded 404, 403, 500
+- [x] **CP-UI-33** Favicon — ⚡ SVG icon across all pages
+- [x] **CP-UI-34** Auto-dismiss flash alerts — fade out after 4 seconds
+- [x] **CP-UI-35** Account settings page — update name, change password
+
+### Branch hygiene (merge before Sunday test)
+- [ ] **CP-UI-36** `feature/ui-polish` merged to `main` via PR
+- [ ] **CP-UI-37** `feature/admin-panel` merged to `main` via PR
+- [ ] **CP-UI-38** `feature/public-pages` merged to `main` via PR
+- [ ] **CP-UI-39** `feature/enhancements` merged to `main` via PR
+- [ ] **CP-UI-40** `feature/ux-improvements` merged to `main` via PR
+
+---
+
+## Phase 4c — Pre-Sunday Test Checklist
+
+**Goal:** Confirm the system is ready before markets reopen Sunday ~21:00 UTC.
+
+- [ ] **CP-PRE-01** All feature branches merged to `main` (see CP-UI-36 to 40)
+- [ ] **CP-PRE-02** Trade close email added (CP-UI-25) — confirms CP-18 in your inbox
+- [ ] **CP-PRE-03** MySQL running, Flyway V4 migration applied (check `symbol_settings` table has 4 rows)
+- [ ] **CP-PRE-04** MT5 bridge healthy: `GET http://localhost:8001/health` → `connected:true`
+- [ ] **CP-PRE-05** Signal engine healthy: `GET http://localhost:8002/health`
+- [ ] **CP-PRE-06** Backend running, dashboard loads, balance shows $100,000 USD
+- [ ] **CP-PRE-07** Bot enabled via dashboard — confirm green "Bot Running" badge in nav
+- [ ] **CP-PRE-08** SSE connected — confirm green dot in dashboard header, no 30s toast
+- [ ] **CP-PRE-09** Backend logs show `[EURUSD] Signal: HOLD` entries every ~60 seconds (scan running)
+- [ ] **CP-PRE-10** Per-symbol overrides visible in Bot Settings — all 4 pairs shown with SL/TP/volume
+
+---
+
+## Phase 5 — MetaAPI Rewrite + Multi-Trader SaaS
+
+**Goal:** Replace the Windows-only MT5 bridge with MetaAPI (cloud-native). Each trader connects their own MT5 account. Bot trades on their behalf.
+
+**Why this matters:** The local Python bridge can only connect to one MT5 terminal on one Windows machine. MetaAPI is cloud-based, supports multiple simultaneous MT5 accounts, and is Linux/Docker/GCP-compatible.
+
+### MetaAPI Integration
+- [ ] **CP-30** MetaAPI account created at https://metaapi.cloud (free tier)
+- [ ] **CP-31** MT5 demo account connected to MetaAPI
+- [ ] **CP-32** `mt5-bridge` rewritten to use MetaAPI REST (replaces `MetaTrader5` Python package)
+- [ ] **CP-33** Per-user `metaapi_account_id` column added to `users` table (V5 migration)
+- [ ] **CP-34** MT5 connect flow in Account Settings — user enters MetaAPI account ID, saved per user
+
+### Multi-Trader Architecture
+- [ ] **CP-35** Trade execution scoped per user — `TradeService.openTrade()` accepts user context
+- [ ] **CP-36** Dashboard balance/equity pulled from the logged-in user's MetaAPI account
+- [ ] **CP-37** Trade records scoped per user — each user sees only their own trades/signals
+- [ ] **CP-38** Trade open/close emails scoped to the triggering user (not just admins)
+- [ ] **CP-39** TRADER role added — has MT5 connected, gets trade alerts; distinct from INVESTOR (read-only)
+
+### Deployment
+- [ ] **CP-40** All services containerised and pushed to GCP Artifact Registry
+- [ ] **CP-41** Cloud SQL MySQL provisioned, Flyway migrations applied
+- [ ] **CP-42** Services deployed to Cloud Run — health checks green
+- [ ] **CP-43** Dashboard accessible at GCP-provisioned URL
+- [ ] **CP-44** Bot enabled on GCP — first signal produced in cloud environment
+- [ ] **CP-45** 48-hour unattended run with paper trades — no crashes or missed scans
 
 ---
 
 ## Phase 6 — Production (Live Trading)
 
-> ⚠️ Only proceed here after CP-38 is complete and win rate is satisfactory over ≥ 100 paper trades.
+> ⚠️ Only proceed here after CP-45 is complete and win rate is satisfactory over ≥ 100 paper trades.
 
-- [ ] **CP-39** Live MT5 account connected to MetaApi
-- [ ] **CP-40** `PAPER_TRADING=false` set in GCP environment — confirmed in logs
-- [ ] **CP-41** First live trade opened (minimum lot size 0.01)
-- [ ] **CP-42** Risk limits verified: max open trades, SL/TP firing correctly
-- [ ] **CP-43** Monitoring / alerting configured (GCP Cloud Monitoring or similar)
-- [ ] **CP-44** Weekly review process established — retrain ML model monthly
-
----
-
-## Phase 4b — UI Polish (SaaS Design System)
-
-**Goal:** Dashboard and auth screens look like a real SaaS product.
-
-- [x] **CP-UI-01** Harvest Technologies design system created (`static/css/app.css`) — Outfit font, navy/blue/green palette, glass cards, animations
-- [x] **CP-UI-02** Login page revamped — glass card, orbs, Lucide icons, Google OAuth + username/password
-- [x] **CP-UI-03** Register page created — full name + username grid, live password strength indicators, Google OAuth
-- [x] **CP-UI-04** Forgot password page created — email field, anti-enumeration success message
-- [x] **CP-UI-05** Reset password page created — token via URL, live strength indicators, error states
-- [x] **CP-UI-06** Dashboard revamped — glass stat cards, topnav with mobile hamburger, proper badge system, Lucide icons
-- [ ] **CP-UI-07** Google OAuth2 credentials wired up (see Notes)
-- [ ] **CP-UI-08** feature/ui-polish branch merged to main via PR
-- [x] **CP-UI-09** Admin panel — user list, role changes, enable/disable, self-modification guard
-- [x] **CP-UI-10** Invite flow — admin sends email+role only, Brevo SMTP, user sets name+password via 72h link
-- [ ] **CP-UI-11** feature/admin-panel branch merged to main via PR
-- [x] **CP-UI-12** Public landing page — hero, features, how it works, signal preview, CTA
-- [x] **CP-UI-13** Route split — `/` public landing, `/dashboard` authenticated app
-- [x] **CP-UI-14** Custom error pages — branded 404, 403, 500
-- [x] **CP-UI-15** Branded HTML email templates — invite + password reset (Thymeleaf + MimeMessage)
-- [ ] **CP-UI-16** feature/public-pages branch merged to main via PR
-- [x] **CP-UI-17** Favicon — ⚡ SVG icon across all pages
-- [x] **CP-UI-18** Conditional Google OAuth button — hidden when credentials not configured
-- [x] **CP-UI-19** Auto-dismiss flash alerts — fade out after 4 seconds
-- [x] **CP-UI-20** Account settings page (/account) — update name, change password
-- [x] **CP-UI-21** Bot settings page (/settings/bot, admin only) — edit all trading params from UI
-- [ ] **CP-UI-22** feature/enhancements branch merged to main via PR
+- [ ] **CP-46** Live MT5 account connected via MetaAPI
+- [ ] **CP-47** `PAPER_TRADING=false` confirmed in logs
+- [ ] **CP-48** First live trade opened (minimum lot 0.01)
+- [ ] **CP-49** Risk limits verified — SL/TP firing correctly, max open trades respected
+- [ ] **CP-50** Monitoring / alerting configured (GCP Cloud Monitoring or similar)
+- [ ] **CP-51** Weekly review process established — retrain ML model monthly
 
 ---
 
@@ -124,20 +186,37 @@ Track your progress through each phase. Check off items as you complete them.
 ```
 CP-03: MySQL installed natively on Windows (not Docker) — 8GB RAM machine.
        Dev profile uses forexbot/forexbot123. DB user created with mysql_native_password plugin.
+
 CP-05: MT5 path: C:\Program Files\MetaTrader 5\terminal64.exe (non-standard install).
        MT5 desktop app must be open and logged in before starting mt5-bridge.
+
 CP-07: MetaQuotes-Demo account 109814567 — balance $100,000 USD (paper).
-CP-13: Debug endpoint added: GET http://localhost:8002/debug/{symbol} — shows raw indicator
-       values and both gate decisions. Useful for diagnosing HOLD reasons.
+
+CP-13: Debug endpoint available: GET http://localhost:8002/debug/{symbol}
+       Shows raw indicator values and both gate decisions. Useful for diagnosing HOLD reasons.
+
 CP-15: H1 signals all HOLD over weekend (expected — forex markets closed Sat/Sun).
        Markets reopen Sunday ~21:00 UTC. First actionable signals expected during
-       London session Monday (08:00–12:00 UTC).
+       London session Monday 08:00–12:00 UTC.
+
 CP-23: Models trained on 4,801 H1 candles each (~7 months of data).
        USDJPY best accuracy at 70%. Retrain monthly or after significant market regime change.
-CP-UI-07: Google OAuth2 setup steps:
+
+CP-UI-07: Google OAuth2 setup steps (optional — password login works standalone):
   1. Go to https://console.cloud.google.com → APIs & Services → Credentials
   2. Create OAuth 2.0 Client ID (Web application)
   3. Add Authorized redirect URI: http://localhost:8080/login/oauth2/code/google
   4. Set env vars: GOOGLE_CLIENT_ID=... and GOOGLE_CLIENT_SECRET=...
-  5. Add to .env or application-dev.yml (never commit credentials)
+  5. Add to .env (never commit credentials)
+
+KNOWN LIMITATION — scan_interval_sec UI field:
+  The scan interval setting in Bot Settings writes to the DB but does NOT affect the
+  running scheduler at runtime. The @Scheduled annotation reads bot.scan-interval-seconds
+  from application.yml at startup only. Changing this field requires a restart to take
+  effect. Fix planned for Phase 5 (dynamic ScheduledExecutorService).
+
+ROLE MODEL (current vs future):
+  Current: ADMIN (operator + trader) / USER (observer). Trade emails go to ADMIN only.
+  Phase 5: ADMIN / TRADER (own MT5, get trade alerts) / INVESTOR (read-only, weekly review).
+  The current ADMIN role effectively IS the trader in the single-account local setup.
 ```

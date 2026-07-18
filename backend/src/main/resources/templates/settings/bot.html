@@ -53,20 +53,42 @@
 
     <button class="mob-ham" id="ham" aria-label="Menu"><span></span><span></span><span></span></button>
   </div>
-  <div class="mob-drawer" id="mob-drawer">
+</nav>
+
+<div class="mob-overlay" id="mob-overlay"></div>
+<div class="mob-drawer" id="mob-drawer" aria-label="Navigation menu">
+  <div class="mob-drawer-header">
+    <div style="display:flex;align-items:center;gap:9px">
+      <div class="logo-box" style="width:28px;height:28px;border-radius:8px">
+        <i data-lucide="zap" style="width:13px;height:13px;color:#fff"></i>
+      </div>
+      <span style="font-size:.85rem;font-weight:700;color:#f1f5f9">Harvest <span class="gradient-text">Technologies</span></span>
+    </div>
+    <button class="mob-close" id="mob-close" aria-label="Close menu"><i data-lucide="x"></i></button>
+  </div>
+  <nav class="mob-nav">
     <a th:href="@{/dashboard}" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
     <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
-    <a th:href="@{/settings/bot}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Bot settings</a>
+    <a th:href="@{/settings/bot}" class="mob-drawer-a active" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Bot Settings</a>
     <a th:href="@{/account}" class="mob-drawer-a"><i data-lucide="user"></i> Account</a>
+  </nav>
+  <div class="mob-drawer-footer">
+    <div class="mob-drawer-status">
+      <span th:if="${!marketOpen}" class="badge b-closed"><span class="dot dot-grey"></span> Market Closed</span>
+      <span th:if="${marketOpen and botEnabled}" class="badge b-running"><span class="dot dot-green"></span> Bot Running</span>
+      <span th:if="${marketOpen and !botEnabled}" class="badge b-stopped"><span class="dot dot-red"></span> Bot Stopped</span>
+    </div>
     <hr class="mob-drawer-sep"/>
+    <a th:href="@{/account}" class="nav-user-pill" style="text-decoration:none;width:fit-content">
+      <i data-lucide="user" style="width:13px;height:13px"></i>
+      <span sec:authentication="name">user</span>
+    </a>
     <form th:action="@{/logout}" method="post" style="margin:0">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-      <button type="submit" class="mob-drawer-a" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;font-size:.875rem;color:#94a3b8;text-align:left">
-        <i data-lucide="log-out"></i> Sign out
-      </button>
+      <button type="submit" class="mob-drawer-a danger"><i data-lucide="log-out"></i> Sign out</button>
     </form>
   </div>
-</nav>
+</div>
 <div class="nav-spacer"></div>
 
 <main class="page" style="max-width:760px">
@@ -177,6 +199,109 @@
       </div>
     </div>
 
+    <!-- ── Per-symbol risk ── -->
+    <div class="gcard au4" style="padding:24px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <div class="ic ic-sm" style="background:rgba(14,165,233,.12);color:#38bdf8"><i data-lucide="sliders-horizontal"></i></div>
+        <div>
+          <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Per-symbol overrides</h2>
+        </div>
+      </div>
+      <p style="font-size:.78rem;color:#475569;margin:0 0 20px 0">Override SL / TP / volume for each pair individually. When a symbol is disabled, the signal engine skips it entirely. Falls back to the global defaults above if no row is found.</p>
+
+      <div style="display:flex;flex-direction:column;gap:12px" id="sym-cards">
+        <div th:each="sym : ${symbolSettings}">
+          <form th:action="@{/settings/bot/symbol}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <input type="hidden" name="symbol" th:value="${sym.symbol}"/>
+
+            <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px">
+
+              <!-- Symbol header row -->
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <span style="font-size:.9rem;font-weight:800;color:#f1f5f9;font-family:monospace;letter-spacing:.04em"
+                        th:text="${sym.symbol}">EURUSD</span>
+                  <!-- disabled badge shown when not enabled -->
+                  <span th:unless="${sym.enabled}"
+                        style="font-size:.65rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);padding:2px 8px;border-radius:100px">Disabled</span>
+                </div>
+                <!-- Enabled toggle -->
+                <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+                  <span style="font-size:.75rem;color:#475569">Active</span>
+                  <div style="position:relative;width:40px;height:22px">
+                    <input type="checkbox" name="enabled" value="true"
+                           th:checked="${sym.enabled}"
+                           th:id="|toggle-${sym.symbol}|"
+                           class="sym-toggle"
+                           style="opacity:0;width:0;height:0;position:absolute"/>
+                    <span th:id="|track-${sym.symbol}|"
+                          class="sym-track"
+                          th:style="${sym.enabled} ? 'position:absolute;top:0;left:0;right:0;bottom:0;border-radius:22px;transition:.3s;background:#059669;border:1px solid rgba(16,185,129,.4);cursor:pointer'
+                                                  : 'position:absolute;top:0;left:0;right:0;bottom:0;border-radius:22px;transition:.3s;background:#1e3a5f;border:1px solid rgba(255,255,255,.1);cursor:pointer'"></span>
+                    <span th:id="|thumb-${sym.symbol}|"
+                          class="sym-thumb"
+                          th:style="${sym.enabled} ? 'position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:.3s;transform:translateX(18px);pointer-events:none'
+                                                  : 'position:absolute;top:2px;left:2px;width:16px;height:16px;background:#94a3b8;border-radius:50%;transition:.3s;transform:translateX(0);pointer-events:none'"></span>
+                  </div>
+                </label>
+              </div>
+
+              <!-- SL / TP / Volume / R:R grid -->
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 72px;gap:12px;align-items:end">
+                <div>
+                  <label class="label">SL (pips)</label>
+                  <div class="input-wrap">
+                    <i data-lucide="arrow-down" class="i-pfx"></i>
+                    <input type="number" name="sl_pips" class="input sym-sl"
+                           th:value="${sym.slPips}" min="5" max="500" step="0.5" required/>
+                  </div>
+                </div>
+                <div>
+                  <label class="label">TP (pips)</label>
+                  <div class="input-wrap">
+                    <i data-lucide="arrow-up" class="i-pfx"></i>
+                    <input type="number" name="tp_pips" class="input sym-tp"
+                           th:value="${sym.tpPips}" min="5" max="1000" step="0.5" required/>
+                  </div>
+                </div>
+                <div>
+                  <label class="label">Volume (lots)</label>
+                  <div class="input-wrap">
+                    <i data-lucide="layers" class="i-pfx"></i>
+                    <input type="number" name="volume" class="input"
+                           th:value="${sym.volume}" min="0.01" max="10" step="0.01" required/>
+                  </div>
+                </div>
+                <div>
+                  <label class="label">R:R</label>
+                  <div class="sym-rr"
+                       style="height:42px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:.82rem;font-weight:700;color:#38bdf8;font-family:monospace"
+                       th:text="${sym.rewardRatioLabel()}">1:2.0</div>
+                </div>
+              </div>
+
+              <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+                <p style="font-size:.72rem;color:#334155;margin:0">Last updated: <span style="color:#475569"
+                     th:text="${sym.formattedUpdatedAt()}">—</span></p>
+                <button type="submit" class="btn btn-ghost btn-sm"
+                        style="font-size:.78rem;padding:6px 14px">
+                  <i data-lucide="save"></i>
+                  Save <span th:text="${sym.symbol}">EURUSD</span>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Empty state — shouldn't normally appear since migration seeds all 4 -->
+        <div th:if="${#lists.isEmpty(symbolSettings)}"
+             style="text-align:center;padding:24px;color:#334155;font-size:.82rem">
+          No symbols configured. Add symbols above and restart the bot.
+        </div>
+      </div>
+    </div>
+
     <!-- ── Signal quality ── -->
     <div class="gcard" style="padding:24px;margin-bottom:16px;background:rgba(13,31,53,.6);border:1px solid rgba(255,255,255,.07)">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
@@ -229,12 +354,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const ham = document.getElementById('ham');
   const drawer = document.getElementById('mob-drawer');
-  if (ham && drawer) {
-    ham.addEventListener('click', () => {
-      ham.classList.toggle('open');
-      drawer.style.display = drawer.style.display === 'flex' ? 'none' : 'flex';
-    });
-  }
+  const overlay = document.getElementById('mob-overlay');
+  const mobClose = document.getElementById('mob-close');
+  function openDrawer()  { drawer.classList.add('open'); overlay.classList.add('open'); ham.classList.add('open'); document.body.style.overflow='hidden'; }
+  function closeDrawer() { drawer.classList.remove('open'); overlay.classList.remove('open'); ham.classList.remove('open'); document.body.style.overflow=''; }
+  ham?.addEventListener('click', () => drawer.classList.contains('open') ? closeDrawer() : openDrawer());
+  overlay?.addEventListener('click', closeDrawer);
+  mobClose?.addEventListener('click', closeDrawer);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDrawer(); });
 
   // Paper trading toggle visual
   const checkbox = document.getElementById('paper-toggle');
@@ -254,6 +381,45 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
   if (checkbox) { updateToggle(); checkbox.addEventListener('change', updateToggle); }
+
+  // Per-symbol toggles + live R:R ratio
+  document.querySelectorAll('#sym-cards .sym-toggle').forEach(cb => {
+    const sym = cb.closest('form').querySelector('[name="symbol"]').value;
+    const trackEl = document.getElementById('track-' + sym);
+    const thumbEl = document.getElementById('thumb-' + sym);
+    function updateSymToggle() {
+      if (cb.checked) {
+        trackEl.style.background = '#059669';
+        trackEl.style.borderColor = 'rgba(16,185,129,.4)';
+        thumbEl.style.background = '#fff';
+        thumbEl.style.transform = 'translateX(18px)';
+      } else {
+        trackEl.style.background = '#1e3a5f';
+        trackEl.style.borderColor = 'rgba(255,255,255,.1)';
+        thumbEl.style.background = '#94a3b8';
+        thumbEl.style.transform = 'translateX(0)';
+      }
+    }
+    cb.addEventListener('change', updateSymToggle);
+    // trigger once so initial state always matches the Thymeleaf-rendered style
+    trackEl.addEventListener('click', () => { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); });
+  });
+
+  // Live R:R ratio update as SL/TP inputs change
+  document.querySelectorAll('#sym-cards form').forEach(form => {
+    const slInput = form.querySelector('.sym-sl');
+    const tpInput = form.querySelector('.sym-tp');
+    const rrEl    = form.querySelector('.sym-rr');
+    if (!slInput || !tpInput || !rrEl) return;
+    function recalcRR() {
+      const sl = parseFloat(slInput.value);
+      const tp = parseFloat(tpInput.value);
+      if (!sl || sl === 0) { rrEl.textContent = '—'; return; }
+      rrEl.textContent = '1:' + (tp / sl).toFixed(1);
+    }
+    slInput.addEventListener('input', recalcRR);
+    tpInput.addEventListener('input', recalcRR);
+  });
 });
 </script>
 </body>

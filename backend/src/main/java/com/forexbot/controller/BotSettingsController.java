@@ -1,13 +1,16 @@
 package com.forexbot.controller;
 
 import com.forexbot.model.BotConfig;
+import com.forexbot.model.SymbolSettings;
 import com.forexbot.repository.BotConfigRepository;
+import com.forexbot.service.SymbolSettingsService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -29,10 +32,13 @@ public class BotSettingsController {
         KEY_META.put("symbols",           new String[]{"Symbols",                 "Comma-separated list of pairs to trade, e.g. EURUSD,GBPUSD,USDJPY,AUDUSD."});
     }
 
-    private final BotConfigRepository configRepository;
+    private final BotConfigRepository   configRepository;
+    private final SymbolSettingsService symbolSettingsService;
 
-    public BotSettingsController(BotConfigRepository configRepository) {
-        this.configRepository = configRepository;
+    public BotSettingsController(BotConfigRepository configRepository,
+                                 SymbolSettingsService symbolSettingsService) {
+        this.configRepository      = configRepository;
+        this.symbolSettingsService = symbolSettingsService;
     }
 
     @GetMapping("/bot")
@@ -45,8 +51,11 @@ public class BotSettingsController {
         }
         model.addAttribute("values", values);
         model.addAttribute("keyMeta", KEY_META);
+        model.addAttribute("symbolSettings", symbolSettingsService.findAll());
         return "settings/bot";
     }
+
+    // ── Global settings save ──────────────────────────────────────────────────
 
     @PostMapping("/bot")
     public String saveBotSettings(@RequestParam Map<String, String> params,
@@ -65,6 +74,26 @@ public class BotSettingsController {
         }
         log.info("Bot settings updated ({} keys saved)", saved);
         redirectAttrs.addFlashAttribute("success", "Settings saved.");
+        return "redirect:/settings/bot";
+    }
+
+    // ── Per-symbol risk save ──────────────────────────────────────────────────
+
+    /**
+     * Individual save for one symbol row.
+     * The HTML form for each symbol posts to this endpoint with hidden field {@code symbol}.
+     * Checkbox absence means unchecked (browser standard).
+     */
+    @PostMapping("/bot/symbol")
+    public String saveSymbolSettings(@RequestParam String symbol,
+                                     @RequestParam BigDecimal sl_pips,
+                                     @RequestParam BigDecimal tp_pips,
+                                     @RequestParam BigDecimal volume,
+                                     @RequestParam(required = false) String enabled,
+                                     RedirectAttributes redirectAttrs) {
+        boolean isEnabled = "true".equalsIgnoreCase(enabled);
+        symbolSettingsService.save(symbol, sl_pips, tp_pips, volume, isEnabled);
+        redirectAttrs.addFlashAttribute("success", symbol + " settings saved.");
         return "redirect:/settings/bot";
     }
 }

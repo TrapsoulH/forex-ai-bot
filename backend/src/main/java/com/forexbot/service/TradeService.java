@@ -1,8 +1,10 @@
 package com.forexbot.service;
 
 import com.forexbot.config.BotProperties;
+import com.forexbot.model.SymbolSettings;
 import com.forexbot.model.Trade;
 import com.forexbot.repository.TradeRepository;
+import com.forexbot.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
@@ -18,30 +20,46 @@ import java.util.Map;
 @Service
 public class TradeService {
 
-    private final BotProperties botProperties;
-    private final TradeRepository tradeRepository;
-    private final WebClient mt5Client;
+    private final BotProperties         botProperties;
+    private final SymbolSettingsService symbolSettingsService;
+    private final TradeRepository       tradeRepository;
+    private final UserRepository        userRepository;
+    private final EmailService          emailService;
+    private final WebClient             mt5Client;
 
     public TradeService(
             BotProperties botProperties,
+            SymbolSettingsService symbolSettingsService,
             TradeRepository tradeRepository,
+            UserRepository userRepository,
+            EmailService emailService,
             @Qualifier("mt5WebClient") WebClient mt5Client
     ) {
-        this.botProperties   = botProperties;
-        this.tradeRepository = tradeRepository;
-        this.mt5Client       = mt5Client;
+        this.botProperties        = botProperties;
+        this.symbolSettingsService = symbolSettingsService;
+        this.tradeRepository      = tradeRepository;
+        this.userRepository       = userRepository;
+        this.emailService         = emailService;
+        this.mt5Client            = mt5Client;
     }
 
     public Trade openTrade(String symbol, String direction, BigDecimal confidence, Long signalId) {
-        log.info("Opening trade | symbol={} direction={} volume={} paper={} signalId={}",
-                symbol, direction, botProperties.getDefaultVolume(), botProperties.isPaperTrading(), signalId);
+        // Resolve per-symbol risk settings; falls back to BotProperties defaults if no row exists
+        SymbolSettings sym = symbolSettingsService.getOrCreate(symbol);
+        BigDecimal resolvedVolume = sym.getVolume();
+        BigDecimal resolvedSl     = sym.getSlPips();
+        BigDecimal resolvedTp     = sym.getTpPips();
+
+        log.info("Opening trade | symbol={} direction={} volume={} sl={} tp={} paper={} signalId={}",
+                symbol, direction, resolvedVolume, resolvedSl, resolvedTp,
+                botProperties.isPaperTrading(), signalId);
 
         Map<String, Object> body = Map.of(
-                "symbol", symbol,
+                "symbol",    symbol,
                 "direction", direction,
-                "volume", botProperties.getDefaultVolume(),
-                "sl_pips", botProperties.getSlPips(),
-                "tp_pips", botProperties.getTpPips()
+                "volume",    resolvedVolume,
+                "sl_pips",   resolvedSl,
+                "tp_pips",   resolvedTp
         );
 
         Map<?, ?> response = null;
@@ -72,7 +90,7 @@ public class TradeService {
         Trade trade = Trade.builder()
                 .symbol(symbol)
                 .direction(Trade.Direction.valueOf(direction))
-                .volume(BigDecimal.valueOf(botProperties.getDefaultVolume()))
+                .volume(resolvedVolume)
                 .openPrice(openPrice)
                 .status(Trade.TradeStatus.OPEN)
                 .mt5Ticket(ticket)
@@ -83,6 +101,17 @@ public class TradeService {
         Trade saved = tradeRepository.save(trade);
         log.info("Trade saved | id={} symbol={} direction={} ticket={} price={}",
                 saved.getId(), symbol, direction, ticket, openPrice);
+
+        // Notify admins only — they operate the bot; regular users don't need per-trade alerts
+        try {
+            userRepository.findAll().stream()
+                .filter(u -> u.getEmail() != null && !u.getEmail().isBlank())
+                .filter(u -> u.getRole() == com.forexbot.model.User.Role.ADMIN)
+                .forEach(u -> emailService.sendTradeOpened(u.getEmail(), saved));
+        } catch (Exception e) {
+            log.error("Failed to send trade notification emails: {}", e.getMessage());
+        }
+
         return saved;
     }
 
@@ -116,6 +145,17 @@ public class TradeService {
         trade.setClosedAt(Instant.now());
         Trade saved = tradeRepository.save(trade);
         log.info("Trade #{} marked CLOSED in DB", saved.getId());
+
+        // Notify admins — fire-and-forget, never blocks the close response
+        try {
+            userRepository.findAll().stream()
+                .filter(u -> u.getEmail() != null && !u.getEmail().isBlank())
+                .filter(u -> u.getRole() == com.forexbot.model.User.Role.ADMIN)
+                .forEach(u -> emailService.sendTradeClosed(u.getEmail(), saved));
+        } catch (Exception e) {
+            log.error("Failed to send trade close notification emails: {}", e.getMessage());
+        }
+
         return saved;
     }
 }

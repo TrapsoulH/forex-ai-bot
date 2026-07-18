@@ -18,26 +18,32 @@ import java.time.Duration;
 @Service
 public class SignalPollerService {
 
-    private final BotProperties botProperties;
-    private final SignalRepository signalRepository;
-    private final TradeRepository tradeRepository;
-    private final TradeService tradeService;
-    private final WebClient signalClient;
+    private final BotProperties         botProperties;
+    private final SymbolSettingsService symbolSettingsService;
+    private final SignalRepository      signalRepository;
+    private final TradeRepository       tradeRepository;
+    private final TradeService          tradeService;
+    private final SseService            sseService;
+    private final WebClient             signalClient;
 
     private volatile boolean botEnabled = false;
 
     public SignalPollerService(
             BotProperties botProperties,
+            SymbolSettingsService symbolSettingsService,
             SignalRepository signalRepository,
             TradeRepository tradeRepository,
             TradeService tradeService,
+            SseService sseService,
             @Qualifier("signalWebClient") WebClient signalClient
     ) {
-        this.botProperties    = botProperties;
-        this.signalRepository = signalRepository;
-        this.tradeRepository  = tradeRepository;
-        this.tradeService     = tradeService;
-        this.signalClient     = signalClient;
+        this.botProperties        = botProperties;
+        this.symbolSettingsService = symbolSettingsService;
+        this.signalRepository     = signalRepository;
+        this.tradeRepository      = tradeRepository;
+        this.tradeService         = tradeService;
+        this.sseService           = sseService;
+        this.signalClient         = signalClient;
     }
 
     public void enable()  { botEnabled = true;  log.info("Bot ENABLED"); }
@@ -58,6 +64,11 @@ public class SignalPollerService {
         }
 
         for (String symbol : botProperties.getSymbols()) {
+            // Respect the per-symbol enabled flag — skip if disabled in bot settings
+            if (!symbolSettingsService.getOrCreate(symbol).isEnabled()) {
+                log.debug("Symbol {} is disabled in settings — skipping this scan cycle", symbol);
+                continue;
+            }
             try {
                 pollSymbol(symbol);
             } catch (Exception e) {
@@ -94,6 +105,11 @@ public class SignalPollerService {
             tradeService.openTrade(symbol, dto.getSignal(), dto.getConfidence(), saved.getId());
             saved.setActedOn(true);
             signalRepository.save(saved);
+            // Push trade event so dashboard refreshes positions + stat cards
+            sseService.broadcastTrade();
         }
+
+        // Always push signal event so the signals table updates live
+        sseService.broadcastSignal();
     }
 }

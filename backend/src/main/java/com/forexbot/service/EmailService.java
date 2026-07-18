@@ -10,6 +10,11 @@ import org.springframework.stereotype.Service;
 import org.thymeleaf.context.Context;
 import org.thymeleaf.spring6.SpringTemplateEngine;
 
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
 /**
  * Transactional email service — HTML emails via Brevo SMTP relay in UAT/prod.
  *
@@ -85,6 +90,79 @@ public class EmailService {
                  "You've been invited to Harvest Technologies",
                  "email/invite",
                  ctx);
+    }
+
+    // ── Trade notification ────────────────────────────────────────────────────
+
+    public void sendTradeOpened(String toEmail, com.forexbot.model.Trade trade) {
+        if (!isMailConfigured()) {
+            log.warn("╔══ TRADE OPENED (dev mode — no SMTP) ═══════════════════════════╗");
+            log.warn("  To: {} | {} {} vol={} price={}",
+                    toEmail, trade.getDirection(), trade.getSymbol(),
+                    trade.getVolume(), trade.getOpenPrice());
+            log.warn("╚═════════════════════════════════════════════════════════════════╝");
+            return;
+        }
+
+        Context ctx = new Context();
+        ctx.setVariable("trade", trade);
+        ctx.setVariable("dashboardUrl", baseUrl + "/dashboard");
+
+        String direction = trade.getDirection().name();
+        String subject   = direction + " " + trade.getSymbol()
+                         + " — Trade opened | Harvest Technologies";
+
+        sendHtml(toEmail, subject, "email/trade-notification", ctx);
+    }
+
+    // ── Trade closed notification ─────────────────────────────────────────────
+
+    public void sendTradeClosed(String toEmail, com.forexbot.model.Trade trade) {
+        String outcome = (trade.getProfit() != null && trade.getProfit().compareTo(BigDecimal.ZERO) >= 0)
+                ? "WIN" : "LOSS";
+
+        // Format profit with explicit sign: +12.50 or -8.30
+        String formattedProfit = "—";
+        if (trade.getProfit() != null) {
+            String sign = trade.getProfit().compareTo(BigDecimal.ZERO) >= 0 ? "+" : "";
+            formattedProfit = sign + trade.getProfit().setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+        }
+
+        // Human-readable duration: "2h 15m" or "45m"
+        String duration = "—";
+        if (trade.getOpenedAt() != null && trade.getClosedAt() != null) {
+            Duration d = Duration.between(trade.getOpenedAt(), trade.getClosedAt());
+            long hours   = d.toHours();
+            long minutes = d.toMinutesPart();
+            duration = hours > 0 ? hours + "h " + minutes + "m" : minutes + "m";
+        }
+
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm").withZone(ZoneId.of("UTC"));
+        String openedAt  = trade.getOpenedAt()  != null ? fmt.format(trade.getOpenedAt())  + " UTC" : "—";
+        String closedAt  = trade.getClosedAt()  != null ? fmt.format(trade.getClosedAt())  + " UTC" : "—";
+
+        if (!isMailConfigured()) {
+            log.warn("╔══ TRADE CLOSED (dev mode — no SMTP) ══════════════════════════╗");
+            log.warn("  To: {} | {} {} {} | profit={} | duration={}",
+                    toEmail, outcome, trade.getDirection(), trade.getSymbol(),
+                    formattedProfit, duration);
+            log.warn("╚═════════════════════════════════════════════════════════════════╝");
+            return;
+        }
+
+        Context ctx = new Context();
+        ctx.setVariable("trade",           trade);
+        ctx.setVariable("outcome",         outcome);
+        ctx.setVariable("formattedProfit", formattedProfit);
+        ctx.setVariable("duration",        duration);
+        ctx.setVariable("openedAt",        openedAt);
+        ctx.setVariable("closedAt",        closedAt);
+        ctx.setVariable("dashboardUrl",    baseUrl + "/dashboard");
+
+        String subject = outcome + " · " + trade.getDirection() + " " + trade.getSymbol()
+                + " closed (" + formattedProfit + " USD) | Harvest Technologies";
+
+        sendHtml(toEmail, subject, "email/trade-close-notification", ctx);
     }
 
     // ── Weekly review ─────────────────────────────────────────────────────────
