@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bot Settings — Harvest Technologies</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- ── Nav ── -->
+<nav class="topnav" style="position:relative">
+  <div class="topnav-inner">
+    <a class="topnav-logo" th:href="@{/dashboard}">
+      <div class="logo-box"><i data-lucide="zap"></i></div>
+      <span class="logo-name">Harvest <span class="gradient-text">Technologies</span></span>
+      <span class="logo-tag">AI Forex</span>
+    </a>
+
+    <a th:href="@{/dashboard}" class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/admin/users}" class="nav-a nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+    <a th:href="@{/settings/bot}" class="nav-a active nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Bot settings</a>
+
+    <div style="flex:1"></div>
+
+    <a th:href="@{/account}" class="btn-outline btn-sm nav-desktop-only" style="margin-right:8px;padding:6px 14px;border-radius:8px;font-size:.8rem;text-decoration:none;color:#94a3b8;border:1px solid rgba(255,255,255,.08)">
+      <i data-lucide="user" style="width:13px;height:13px"></i>
+      <span sec:authentication="name">user</span>
+    </a>
+
+    <form th:action="@{/logout}" method="post" style="margin:0" class="nav-desktop-only">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="nav-logout"><i data-lucide="log-out"></i> Sign out</button>
+    </form>
+
+    <button class="mob-ham" id="ham" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+  <div class="mob-drawer" id="mob-drawer">
+    <a th:href="@{/dashboard}" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+    <a th:href="@{/settings/bot}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Bot settings</a>
+    <a th:href="@{/account}" class="mob-drawer-a"><i data-lucide="user"></i> Account</a>
+    <hr class="mob-drawer-sep"/>
+    <form th:action="@{/logout}" method="post" style="margin:0">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="mob-drawer-a" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;font-size:.875rem;color:#94a3b8;text-align:left">
+        <i data-lucide="log-out"></i> Sign out
+      </button>
+    </form>
+  </div>
+</nav>
+<div class="nav-spacer"></div>
+
+<main class="page" style="max-width:760px">
+
+  <!-- Page header -->
+  <div class="page-header au">
+    <div class="ic ic-md ic-blue"><i data-lucide="settings"></i></div>
+    <div>
+      <h1 class="page-title">Bot settings</h1>
+      <p class="muted" style="font-size:.85rem;margin-top:2px">Adjust trading parameters without restarting the app</p>
+    </div>
+  </div>
+
+  <!-- Flash -->
+  <div th:if="${success}" class="alert alert-success au" style="margin-bottom:20px">
+    <i data-lucide="check-circle"></i>
+    <span th:text="${success}"></span>
+  </div>
+
+  <!-- Paper trading warning -->
+  <div th:if="${values['paper_trading'] == 'false'}" class="alert alert-error au" style="margin-bottom:20px">
+    <i data-lucide="alert-triangle"></i>
+    <span><strong>Live trading is enabled.</strong> Real orders will be placed on your MT5 account.</span>
+  </div>
+
+  <form th:action="@{/settings/bot}" method="post">
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+    <!-- ── Safety ── -->
+    <div class="gcard au1" style="padding:24px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <div class="ic ic-sm ic-amber"><i data-lucide="shield-alert"></i></div>
+        <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Safety</h2>
+      </div>
+
+      <!-- paper_trading toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px">
+        <div>
+          <div style="font-size:.9rem;font-weight:600;color:#f1f5f9">Paper trading mode</div>
+          <div style="font-size:.78rem;color:#475569;margin-top:3px">No real orders are placed while this is on. Turn off only when you're confident in the strategy.</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;margin-left:20px">
+          <input type="checkbox" name="paper_trading" value="true" id="paper-toggle"
+                 th:checked="${values['paper_trading'] == 'true'}"
+                 style="opacity:0;width:0;height:0"/>
+          <span id="paper-track" style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;border-radius:24px;transition:.3s;background:#1e3a5f;border:1px solid rgba(255,255,255,.1)"></span>
+          <span id="paper-thumb" style="position:absolute;content:'';height:18px;width:18px;left:3px;bottom:3px;background:#94a3b8;border-radius:50%;transition:.3s"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Timing ── -->
+    <div class="gcard au2" style="padding:24px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <div class="ic ic-sm ic-blue"><i data-lucide="timer"></i></div>
+        <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Timing</h2>
+      </div>
+      <div>
+        <label class="label">Scan interval (seconds)</label>
+        <div class="input-wrap" style="max-width:200px">
+          <i data-lucide="clock" class="i-pfx"></i>
+          <input type="number" name="scan_interval_sec" class="input" min="30" max="3600" step="1"
+                 th:value="${values['scan_interval_sec']}" placeholder="60"/>
+        </div>
+        <p style="font-size:.75rem;color:#334155;margin-top:5px">How often the signal engine is polled. Minimum 30 seconds.</p>
+      </div>
+    </div>
+
+    <!-- ── Risk ── -->
+    <div class="gcard au3" style="padding:24px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <div class="ic ic-sm ic-green"><i data-lucide="trending-up"></i></div>
+        <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Risk management</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <label class="label">Stop loss (pips)</label>
+          <div class="input-wrap">
+            <i data-lucide="arrow-down" class="i-pfx"></i>
+            <input type="number" name="sl_pips" class="input" min="5" max="500" step="0.5"
+                   th:value="${values['sl_pips']}" placeholder="30"/>
+          </div>
+        </div>
+        <div>
+          <label class="label">Take profit (pips)</label>
+          <div class="input-wrap">
+            <i data-lucide="arrow-up" class="i-pfx"></i>
+            <input type="number" name="tp_pips" class="input" min="5" max="1000" step="0.5"
+                   th:value="${values['tp_pips']}" placeholder="60"/>
+          </div>
+        </div>
+        <div>
+          <label class="label">Default lot size</label>
+          <div class="input-wrap">
+            <i data-lucide="layers" class="i-pfx"></i>
+            <input type="number" name="default_volume" class="input" min="0.01" max="10" step="0.01"
+                   th:value="${values['default_volume']}" placeholder="0.01"/>
+          </div>
+        </div>
+        <div>
+          <label class="label">Max open trades</label>
+          <div class="input-wrap">
+            <i data-lucide="git-merge" class="i-pfx"></i>
+            <input type="number" name="max_open_trades" class="input" min="1" max="20" step="1"
+                   th:value="${values['max_open_trades']}" placeholder="3"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Signal quality ── -->
+    <div class="gcard" style="padding:24px;margin-bottom:16px;background:rgba(13,31,53,.6);border:1px solid rgba(255,255,255,.07)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+        <div class="ic ic-sm ic-purple" style="background:rgba(139,92,246,.15);color:#a78bfa"><i data-lucide="cpu"></i></div>
+        <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Signal quality</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <label class="label">Min ML confidence (0–1)</label>
+          <div class="input-wrap">
+            <i data-lucide="brain" class="i-pfx"></i>
+            <input type="number" name="min_ml_confidence" class="input" min="0.5" max="0.99" step="0.01"
+                   th:value="${values['min_ml_confidence']}" placeholder="0.55"/>
+          </div>
+          <p style="font-size:.75rem;color:#334155;margin-top:5px">Higher = fewer but more confident signals.</p>
+        </div>
+        <div>
+          <label class="label">Symbols</label>
+          <div class="input-wrap">
+            <i data-lucide="bar-chart-2" class="i-pfx"></i>
+            <input type="text" name="symbols" class="input"
+                   th:value="${values['symbols']}" placeholder="EURUSD,GBPUSD,USDJPY,AUDUSD"/>
+          </div>
+          <p style="font-size:.75rem;color:#334155;margin-top:5px">Comma-separated. Changes take effect on next scan.</p>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;padding-bottom:40px">
+      <button type="submit" class="btn btn-primary btn-md">
+        <i data-lucide="save"></i> Save settings
+      </button>
+      <a th:href="@{/dashboard}" class="btn btn-outline btn-md">Cancel</a>
+    </div>
+  </form>
+
+</main>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+
+  document.querySelectorAll('.alert').forEach(el => {
+    setTimeout(() => {
+      el.style.transition = 'opacity .5s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 500);
+    }, 4000);
+  });
+
+  const ham = document.getElementById('ham');
+  const drawer = document.getElementById('mob-drawer');
+  if (ham && drawer) {
+    ham.addEventListener('click', () => {
+      ham.classList.toggle('open');
+      drawer.style.display = drawer.style.display === 'flex' ? 'none' : 'flex';
+    });
+  }
+
+  // Paper trading toggle visual
+  const checkbox = document.getElementById('paper-toggle');
+  const track = document.getElementById('paper-track');
+  const thumb = document.getElementById('paper-thumb');
+  function updateToggle() {
+    if (checkbox.checked) {
+      track.style.background = '#059669';
+      track.style.borderColor = 'rgba(16,185,129,.4)';
+      thumb.style.background = '#fff';
+      thumb.style.transform = 'translateX(20px)';
+    } else {
+      track.style.background = '#1e3a5f';
+      track.style.borderColor = 'rgba(255,255,255,.1)';
+      thumb.style.background = '#94a3b8';
+      thumb.style.transform = 'translateX(0)';
+    }
+  }
+  if (checkbox) { updateToggle(); checkbox.addEventListener('change', updateToggle); }
+});
+</script>
+</body>
+</html>

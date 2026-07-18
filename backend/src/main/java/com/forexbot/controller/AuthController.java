@@ -9,6 +9,7 @@ import com.forexbot.repository.PasswordResetTokenRepository;
 import com.forexbot.service.UserService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -24,6 +25,9 @@ public class AuthController {
     private final UserService userService;
     private final PasswordResetTokenRepository tokenRepository;
 
+    @Value("${spring.security.oauth2.client.registration.google.client-id:disabled}")
+    private String googleClientId;
+
     public AuthController(UserService userService,
                           PasswordResetTokenRepository tokenRepository) {
         this.userService     = userService;
@@ -32,8 +36,13 @@ public class AuthController {
 
     // ── Login ─────────────────────────────────────────────────────────────────
 
+    private boolean isOAuthEnabled() {
+        return googleClientId != null && !googleClientId.isBlank() && !googleClientId.equals("disabled");
+    }
+
     @GetMapping("/login")
-    public String loginPage() {
+    public String loginPage(Model model) {
+        model.addAttribute("oauthEnabled", isOAuthEnabled());
         return "auth/login";
     }
 
@@ -42,6 +51,7 @@ public class AuthController {
     @GetMapping("/register")
     public String registerPage(Model model) {
         model.addAttribute("form", new RegisterForm());
+        model.addAttribute("oauthEnabled", isOAuthEnabled());
         return "auth/register";
     }
 
