@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>User Management — Harvest Technologies</title>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- ── Top Navigation ── -->
+<nav class="topnav" style="position:relative">
+  <div class="topnav-inner">
+    <a class="topnav-logo" href="/">
+      <div class="logo-box"><i data-lucide="zap"></i></div>
+      <span class="logo-name">Harvest <span class="gradient-text">Technologies</span></span>
+      <span class="logo-tag">AI Forex</span>
+    </a>
+
+    <a th:href="@{/}" class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/admin/users}" class="nav-a active nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+
+    <div style="flex:1"></div>
+
+    <div class="nav-user-pill nav-desktop-only" style="margin-right:8px">
+      <i data-lucide="shield" style="width:13px;height:13px;color:#60a5fa"></i>
+      <span sec:authentication="name">admin</span>
+      <span class="badge b-admin" style="font-size:.6rem;padding:1px 6px">Admin</span>
+    </div>
+
+    <form th:action="@{/logout}" method="post" style="margin:0" class="nav-desktop-only">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="nav-logout"><i data-lucide="log-out"></i> Sign out</button>
+    </form>
+
+    <button class="mob-ham" id="ham" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+
+  <div class="mob-drawer" id="mob-drawer">
+    <a href="/" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+    <hr class="mob-drawer-sep"/>
+    <form th:action="@{/logout}" method="post" style="margin:0">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="mob-drawer-a" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;font-size:.875rem;color:#94a3b8;text-align:left">
+        <i data-lucide="log-out"></i> Sign out
+      </button>
+    </form>
+  </div>
+</nav>
+<div class="nav-spacer"></div>
+
+<main class="page">
+
+  <!-- Page header -->
+  <div class="page-header au">
+    <div class="ic ic-md ic-blue"><i data-lucide="users"></i></div>
+    <div>
+      <h1 class="page-title">User Management</h1>
+      <p class="muted" style="font-size:.85rem;margin-top:2px">Create accounts, manage roles and access</p>
+    </div>
+    <div class="hdr-actions">
+      <button class="btn btn-primary btn-md" onclick="toggleForm()">
+        <i data-lucide="user-plus"></i> Add User
+      </button>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  <div th:if="${success}" class="alert alert-success au" style="margin-bottom:20px">
+    <i data-lucide="check-circle"></i>
+    <span th:text="${success}"></span>
+  </div>
+  <div th:if="${error}" class="alert alert-error au" style="margin-bottom:20px">
+    <i data-lucide="alert-circle"></i>
+    <span th:text="${error}"></span>
+  </div>
+
+  <!-- Stat cards -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px">
+    <div class="stat-card au1">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Total Users</span>
+        <div class="ic ic-sm ic-blue"><i data-lucide="users"></i></div>
+      </div>
+      <div class="stat-card-value" th:text="${totalUsers}">0</div>
+      <div class="stat-card-sub">All accounts</div>
+    </div>
+    <div class="stat-card au2">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Active</span>
+        <div class="ic ic-sm ic-green"><i data-lucide="user-check"></i></div>
+      </div>
+      <div class="stat-card-value" style="color:#34d399" th:text="${activeUsers}">0</div>
+      <div class="stat-card-sub">Enabled accounts</div>
+    </div>
+    <div class="stat-card au3">
+      <div class="stat-card-header">
+        <span class="stat-card-label">Admins</span>
+        <div class="ic ic-sm ic-yellow"><i data-lucide="shield"></i></div>
+      </div>
+      <div class="stat-card-value" style="color:#fbbf24" th:text="${adminCount}">0</div>
+      <div class="stat-card-sub">Admin accounts</div>
+    </div>
+  </div>
+
+  <!-- ── Create user form (collapsible) ── -->
+  <div id="create-form-wrap" class="gcard au2"
+       th:style="${showForm} ? 'display:block;padding:28px;margin-bottom:28px' : 'display:none;padding:28px;margin-bottom:28px'">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div class="ic ic-sm ic-green"><i data-lucide="user-plus"></i></div>
+      <h2 style="font-size:1rem;font-weight:700;color:#f1f5f9;margin:0">Create new account</h2>
+      <button type="button" onclick="toggleForm()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#475569">
+        <i data-lucide="x" style="width:18px;height:18px"></i>
+      </button>
+    </div>
+
+    <form th:action="@{/admin/users/create}" th:object="${form}" method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <label class="label">Full name</label>
+          <div class="input-wrap">
+            <i data-lucide="user" class="i-pfx"></i>
+            <input type="text" th:field="*{fullName}" class="input" placeholder="Jane Smith" required autofocus/>
+          </div>
+          <p class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></p>
+        </div>
+        <div>
+          <label class="label">Username</label>
+          <div class="input-wrap">
+            <i data-lucide="at-sign" class="i-pfx"></i>
+            <input type="text" th:field="*{username}" class="input" placeholder="jane_smith" required/>
+          </div>
+          <p class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+        <div>
+          <label class="label">Email address</label>
+          <div class="input-wrap">
+            <i data-lucide="mail" class="i-pfx"></i>
+            <input type="email" th:field="*{email}" class="input" placeholder="jane@example.com" required/>
+          </div>
+          <p class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
+        </div>
+        <div>
+          <label class="label">Role</label>
+          <div class="input-wrap">
+            <i data-lucide="shield" class="i-pfx"></i>
+            <select th:field="*{role}" class="input" style="appearance:none">
+              <option th:each="r : ${roles}" th:value="${r}" th:text="${r}"></option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label class="label">Temporary password</label>
+        <div class="input-wrap">
+          <i data-lucide="lock" class="i-pfx"></i>
+          <input type="password" th:field="*{password}" class="input" placeholder="Min. 8 characters" required autocomplete="new-password"/>
+        </div>
+        <p class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
+        <p style="font-size:.75rem;color:#475569;margin-top:5px">
+          <i data-lucide="info" style="width:12px;height:12px;display:inline;vertical-align:middle"></i>
+          Share this password with the user — they can change it via forgot password.
+        </p>
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button type="submit" class="btn btn-green btn-md">
+          <i data-lucide="user-plus"></i> Create account
+        </button>
+        <button type="button" class="btn btn-outline btn-md" onclick="toggleForm()">Cancel</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- ── Users table ── -->
+  <div class="au3">
+    <div class="section-title"><i data-lucide="users"></i> All Users</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>User</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Last login</th>
+            <th>Joined</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr th:each="u : ${users}">
+
+            <!-- Avatar + name -->
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="ic ic-sm ic-muted" style="font-size:.7rem;font-weight:700;color:#94a3b8;flex-shrink:0"
+                     th:text="${u.fullName != null ? u.fullName.substring(0,1).toUpperCase() : u.username.substring(0,1).toUpperCase()}">A</div>
+                <div>
+                  <div style="font-weight:600;color:#e2e8f0;font-size:.875rem" th:text="${u.fullName != null ? u.fullName : u.username}">—</div>
+                  <div style="font-size:.75rem;color:#475569" th:text="'@' + ${u.username}">@user</div>
+                </div>
+              </div>
+            </td>
+
+            <td style="color:#94a3b8;font-size:.85rem" th:text="${u.email}">—</td>
+
+            <!-- Role badge + change form -->
+            <td>
+              <form th:action="@{/admin/users/{id}/role(id=${u.id})}" method="post"
+                    style="display:flex;align-items:center;gap:6px">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <select name="role" class="input" style="padding:4px 8px;font-size:.75rem;width:auto;border-radius:8px"
+                        th:disabled="${u.username == #authentication.name}"
+                        onchange="this.form.submit()">
+                  <option th:each="r : ${roles}"
+                          th:value="${r}"
+                          th:text="${r}"
+                          th:selected="${u.role == r}"></option>
+                </select>
+              </form>
+            </td>
+
+            <!-- Enabled toggle -->
+            <td>
+              <span th:if="${u.enabled}" class="badge b-running">
+                <span class="dot dot-green"></span> Active
+              </span>
+              <span th:unless="${u.enabled}" class="badge b-stopped">
+                <span class="dot dot-red"></span> Disabled
+              </span>
+            </td>
+
+            <!-- Last login -->
+            <td style="color:#64748b;font-size:.8rem;white-space:nowrap"
+                th:text="${u.lastLoginAt != null ? #temporals.format(u.lastLoginAt, 'dd MMM yyyy HH:mm') : 'Never'}">—</td>
+
+            <!-- Joined -->
+            <td style="color:#64748b;font-size:.8rem;white-space:nowrap"
+                th:text="${#temporals.format(u.createdAt, 'dd MMM yyyy')}">—</td>
+
+            <!-- Actions -->
+            <td>
+              <form th:action="@{/admin/users/{id}/toggle(id=${u.id})}" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit"
+                        th:disabled="${u.username == #authentication.name}"
+                        th:title="${u.username == #authentication.name ? 'Cannot disable your own account' : ''}"
+                        class="btn btn-xs"
+                        th:classappend="${u.enabled} ? 'btn-danger' : 'btn-ghost-green'">
+                  <i th:attr="data-lucide=${u.enabled} ? 'user-x' : 'user-check'"></i>
+                  <span th:text="${u.enabled} ? 'Disable' : 'Enable'">Toggle</span>
+                </button>
+              </form>
+            </td>
+
+          </tr>
+          <tr th:if="${#lists.isEmpty(users)}">
+            <td colspan="7">
+              <div class="empty-state">
+                <i data-lucide="users"></i>
+                <p>No users yet</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  &copy; 2025 <a href="/">Harvest Technologies</a> &nbsp;·&nbsp; Admin Panel
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+
+  const ham = document.getElementById('ham');
+  const drawer = document.getElementById('mob-drawer');
+  if (ham && drawer) {
+    ham.addEventListener('click', () => {
+      ham.classList.toggle('open');
+      drawer.style.display = drawer.style.display === 'flex' ? 'none' : 'flex';
+    });
+  }
+});
+
+function toggleForm() {
+  const wrap = document.getElementById('create-form-wrap');
+  const isHidden = wrap.style.display === 'none' || wrap.style.display === '';
+  wrap.style.display = isHidden ? 'block' : 'none';
+  if (isHidden) wrap.querySelector('input[type=text]').focus();
+  lucide.createIcons();
+}
+</script>
+</body>
+</html>

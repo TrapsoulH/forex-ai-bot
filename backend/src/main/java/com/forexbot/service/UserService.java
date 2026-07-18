@@ -1,5 +1,6 @@
 package com.forexbot.service;
 
+import com.forexbot.dto.CreateUserForm;
 import com.forexbot.dto.ForgotPasswordForm;
 import com.forexbot.dto.RegisterForm;
 import com.forexbot.dto.ResetPasswordForm;
@@ -14,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -119,6 +121,57 @@ public class UserService {
         tokenRepository.save(token);
 
         log.info("Password successfully reset for user: {}", user.getUsername());
+    }
+
+    // ── Admin ─────────────────────────────────────────────────────────────────
+
+    public List<User> findAllUsers() {
+        return userRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Transactional
+    public User adminCreateUser(CreateUserForm form) {
+        if (userRepository.existsByUsername(form.getUsername())) {
+            throw new IllegalArgumentException("Username is already taken");
+        }
+        if (userRepository.existsByEmail(form.getEmail())) {
+            throw new IllegalArgumentException("An account with this email already exists");
+        }
+        User user = User.builder()
+                .username(form.getUsername())
+                .email(form.getEmail())
+                .fullName(form.getFullName())
+                .passwordHash(passwordEncoder.encode(form.getPassword()))
+                .role(form.getRole() != null ? form.getRole() : User.Role.USER)
+                .enabled(true)
+                .build();
+        User saved = userRepository.save(user);
+        log.info("Admin created user: {} ({}) role={}", saved.getUsername(), saved.getEmail(), saved.getRole());
+        return saved;
+    }
+
+    @Transactional
+    public void toggleUserEnabled(Long userId, String requestingUsername) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (user.getUsername().equals(requestingUsername)) {
+            throw new IllegalArgumentException("You cannot disable your own account");
+        }
+        user.setEnabled(!user.isEnabled());
+        userRepository.save(user);
+        log.info("Admin toggled user {} → enabled={}", user.getUsername(), user.isEnabled());
+    }
+
+    @Transactional
+    public void changeUserRole(Long userId, User.Role newRole, String requestingUsername) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (user.getUsername().equals(requestingUsername)) {
+            throw new IllegalArgumentException("You cannot change your own role");
+        }
+        user.setRole(newRole);
+        userRepository.save(user);
+        log.info("Admin changed role of {} → {}", user.getUsername(), newRole);
     }
 
     // ── OAuth2 helpers ────────────────────────────────────────────────────────
