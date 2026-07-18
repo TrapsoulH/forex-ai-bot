@@ -32,9 +32,10 @@ spring:
     prefix: classpath:/templates/
     suffix: .html
 
-  # Mail — blank values = console fallback (EmailService logs link instead of sending)
+  # Mail — Brevo SMTP relay. Blank values = console fallback (EmailService logs links instead).
+  # In dev: set MAIL_USERNAME and MAIL_PASSWORD in .env (Brevo login email + SMTP key)
   mail:
-    host: ${MAIL_HOST:smtp.gmail.com}
+    host: ${MAIL_HOST:smtp-relay.brevo.com}
     port: ${MAIL_PORT:587}
     username: ${MAIL_USERNAME:}
     password: ${MAIL_PASSWORD:}
@@ -44,13 +45,17 @@ spring:
           auth: true
           starttls:
             enable: true
+          ssl:
+            trust: smtp-relay.brevo.com
 
   # Google OAuth2 registration is defined per-profile so Spring never starts with an empty client-id.
   # See application-dev.yml / application-uat.yml / application-prod.yml.
 
-# Application base URL — used in email links (password reset etc.)
+# Application base URL — used in email links (password reset, invite, etc.)
 app:
   base-url: ${APP_BASE_URL:http://localhost:8080}
+  mail:
+    from: ${MAIL_FROM:${MAIL_USERNAME:}}
 
 server:
   port: ${SERVER_PORT:8080}

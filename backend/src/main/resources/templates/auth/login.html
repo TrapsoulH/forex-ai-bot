@@ -42,6 +42,10 @@
       <i data-lucide="shield-check"></i>
       <span>Password updated successfully. Sign in with your new password.</span>
     </div>
+    <div th:if="${accountReady}" class="alert alert-success" style="margin-bottom:20px">
+      <i data-lucide="user-check"></i>
+      <span>Your account is ready! Sign in below to get started.</span>
+    </div>
 
     <!-- Username/Password form -->
     <form th:action="@{/login}" method="post">

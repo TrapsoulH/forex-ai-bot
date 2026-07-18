@@ -1,6 +1,6 @@
 package com.forexbot.controller;
 
-import com.forexbot.dto.CreateUserForm;
+import com.forexbot.dto.InviteUserForm;
 import com.forexbot.model.User;
 import com.forexbot.repository.UserRepository;
 import com.forexbot.service.UserService;
@@ -31,35 +31,37 @@ public class AdminController {
 
     @GetMapping("/users")
     public String users(Model model) {
-        model.addAttribute("users",      userService.findAllUsers());
-        model.addAttribute("totalUsers", userRepository.count());
-        model.addAttribute("activeUsers",userRepository.countByEnabled(true));
-        model.addAttribute("adminCount", userRepository.countByRole(User.Role.ADMIN));
-        model.addAttribute("form",       new CreateUserForm());
-        model.addAttribute("roles",      User.Role.values());
+        model.addAttribute("users",       userService.findAllUsers());
+        model.addAttribute("totalUsers",  userRepository.count());
+        model.addAttribute("activeUsers", userRepository.countByEnabled(true));
+        model.addAttribute("adminCount",  userRepository.countByRole(User.Role.ADMIN));
+        model.addAttribute("form",        new InviteUserForm());
+        model.addAttribute("roles",       User.Role.values());
         return "admin/users";
     }
 
-    // ── Create user ───────────────────────────────────────────────────────────
+    // ── Invite user ───────────────────────────────────────────────────────────
 
-    @PostMapping("/users/create")
-    public String createUser(@Valid @ModelAttribute("form") CreateUserForm form,
+    @PostMapping("/users/invite")
+    public String inviteUser(@Valid @ModelAttribute("form") InviteUserForm form,
                              BindingResult result,
                              Model model,
+                             @AuthenticationPrincipal UserDetails principal,
                              RedirectAttributes ra) {
         if (result.hasErrors()) {
-            model.addAttribute("users",      userService.findAllUsers());
-            model.addAttribute("totalUsers", userRepository.count());
-            model.addAttribute("activeUsers",userRepository.countByEnabled(true));
-            model.addAttribute("adminCount", userRepository.countByRole(User.Role.ADMIN));
-            model.addAttribute("roles",      User.Role.values());
-            model.addAttribute("showForm",   true);   // keep form open on error
+            model.addAttribute("users",       userService.findAllUsers());
+            model.addAttribute("totalUsers",  userRepository.count());
+            model.addAttribute("activeUsers", userRepository.countByEnabled(true));
+            model.addAttribute("adminCount",  userRepository.countByRole(User.Role.ADMIN));
+            model.addAttribute("roles",       User.Role.values());
+            model.addAttribute("showForm",    true);
             return "admin/users";
         }
         try {
-            User created = userService.adminCreateUser(form);
-            log.info("Admin created user: {}", created.getUsername());
-            ra.addFlashAttribute("success", "Account created for " + created.getFullName() + " (@" + created.getUsername() + ")");
+            User invited = userService.inviteUser(form.getEmail(), form.getRole(), principal.getUsername());
+            log.info("Admin {} invited {}", principal.getUsername(), invited.getEmail());
+            ra.addFlashAttribute("success",
+                "Invite sent to " + invited.getEmail() + ". They'll receive an email to set up their account.");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
         }

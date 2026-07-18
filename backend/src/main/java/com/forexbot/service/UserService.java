@@ -1,6 +1,6 @@
 package com.forexbot.service;
 
-import com.forexbot.dto.CreateUserForm;
+import com.forexbot.dto.AcceptInviteForm;
 import com.forexbot.dto.ForgotPasswordForm;
 import com.forexbot.dto.RegisterForm;
 import com.forexbot.dto.ResetPasswordForm;
@@ -129,25 +129,76 @@ public class UserService {
         return userRepository.findAllByOrderByCreatedAtDesc();
     }
 
+    /**
+     * Invite flow — admin provides email + role only.
+     * Creates the account with a random placeholder password (unusable),
+     * issues a 72-hour setup token, and fires the invite email.
+     * The invitee sets their full name + password on the /invite/accept page.
+     */
     @Transactional
-    public User adminCreateUser(CreateUserForm form) {
-        if (userRepository.existsByUsername(form.getUsername())) {
-            throw new IllegalArgumentException("Username is already taken");
-        }
-        if (userRepository.existsByEmail(form.getEmail())) {
+    public User inviteUser(String email, User.Role role, String invitedByUsername) {
+        if (userRepository.existsByEmail(email)) {
             throw new IllegalArgumentException("An account with this email already exists");
         }
+
+        // Auto-generate a unique username from the email local-part
+        String base = email.split("@")[0].replaceAll("[^a-zA-Z0-9_]", "_");
+        String username = base;
+        int i = 1;
+        while (userRepository.existsByUsername(username)) {
+            username = base + i++;
+        }
+
         User user = User.builder()
-                .username(form.getUsername())
-                .email(form.getEmail())
-                .fullName(form.getFullName())
-                .passwordHash(passwordEncoder.encode(form.getPassword()))
-                .role(form.getRole() != null ? form.getRole() : User.Role.USER)
+                .username(username)
+                .email(email)
+                .fullName("")   // set by the invitee on the accept page
+                .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString())) // unusable placeholder
+                .role(role != null ? role : User.Role.USER)
                 .enabled(true)
                 .build();
         User saved = userRepository.save(user);
-        log.info("Admin created user: {} ({}) role={}", saved.getUsername(), saved.getEmail(), saved.getRole());
+
+        // Reuse password_reset_tokens table — 72h expiry (longer than a regular reset)
+        tokenRepository.deleteAllByUserId(saved.getId());
+        String rawToken = UUID.randomUUID().toString();
+        PasswordResetToken token = PasswordResetToken.builder()
+                .token(rawToken)
+                .user(saved)
+                .expiresAt(Instant.now().plus(72, ChronoUnit.HOURS))
+                .build();
+        tokenRepository.save(token);
+
+        emailService.sendInvite(saved.getEmail(), rawToken);
+        log.info("User invited: {} ({}) role={} by {}", saved.getEmail(), saved.getUsername(), role, invitedByUsername);
         return saved;
+    }
+
+    /**
+     * Accept invite — sets the user's full name and password, marks token used.
+     */
+    @Transactional
+    public void acceptInvite(AcceptInviteForm form) {
+        if (!form.getPassword().equals(form.getConfirmPassword())) {
+            throw new IllegalArgumentException("Passwords do not match");
+        }
+        PasswordResetToken token = tokenRepository.findByToken(form.getToken())
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired invite link"));
+        if (token.isUsed()) {
+            throw new IllegalArgumentException("This invite link has already been used");
+        }
+        if (token.isExpired()) {
+            throw new IllegalArgumentException("This invite link has expired — ask your admin to resend");
+        }
+
+        User user = token.getUser();
+        user.setFullName(form.getFullName().trim());
+        user.setPasswordHash(passwordEncoder.encode(form.getPassword()));
+        userRepository.save(user);
+
+        token.setUsed(true);
+        tokenRepository.save(token);
+        log.info("Invite accepted by user: {} ({})", user.getUsername(), user.getEmail());
     }
 
     @Transactional

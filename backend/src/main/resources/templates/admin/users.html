@@ -113,45 +113,29 @@
     </div>
   </div>
 
-  <!-- ── Create user form (collapsible) ── -->
+  <!-- ── Invite user form (collapsible) ── -->
   <div id="create-form-wrap" class="gcard au2"
        th:style="${showForm} ? 'display:block;padding:28px;margin-bottom:28px' : 'display:none;padding:28px;margin-bottom:28px'">
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
-      <div class="ic ic-sm ic-green"><i data-lucide="user-plus"></i></div>
-      <h2 style="font-size:1rem;font-weight:700;color:#f1f5f9;margin:0">Create new account</h2>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+      <div class="ic ic-sm ic-green"><i data-lucide="mail"></i></div>
+      <h2 style="font-size:1rem;font-weight:700;color:#f1f5f9;margin:0">Invite new user</h2>
       <button type="button" onclick="toggleForm()" style="margin-left:auto;background:none;border:none;cursor:pointer;color:#475569">
         <i data-lucide="x" style="width:18px;height:18px"></i>
       </button>
     </div>
+    <p style="font-size:.8rem;color:#475569;margin-bottom:20px">
+      An email will be sent with a link for the user to set their own name and password.
+    </p>
 
-    <form th:action="@{/admin/users/create}" th:object="${form}" method="post">
+    <form th:action="@{/admin/users/invite}" th:object="${form}" method="post">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-        <div>
-          <label class="label">Full name</label>
-          <div class="input-wrap">
-            <i data-lucide="user" class="i-pfx"></i>
-            <input type="text" th:field="*{fullName}" class="input" placeholder="Jane Smith" required autofocus/>
-          </div>
-          <p class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></p>
-        </div>
-        <div>
-          <label class="label">Username</label>
-          <div class="input-wrap">
-            <i data-lucide="at-sign" class="i-pfx"></i>
-            <input type="text" th:field="*{username}" class="input" placeholder="jane_smith" required/>
-          </div>
-          <p class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></p>
-        </div>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
         <div>
           <label class="label">Email address</label>
           <div class="input-wrap">
             <i data-lucide="mail" class="i-pfx"></i>
-            <input type="email" th:field="*{email}" class="input" placeholder="jane@example.com" required/>
+            <input type="email" th:field="*{email}" class="input" placeholder="jane@example.com" required autofocus/>
           </div>
           <p class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
         </div>
@@ -166,22 +150,9 @@
         </div>
       </div>
 
-      <div style="margin-bottom:20px">
-        <label class="label">Temporary password</label>
-        <div class="input-wrap">
-          <i data-lucide="lock" class="i-pfx"></i>
-          <input type="password" th:field="*{password}" class="input" placeholder="Min. 8 characters" required autocomplete="new-password"/>
-        </div>
-        <p class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></p>
-        <p style="font-size:.75rem;color:#475569;margin-top:5px">
-          <i data-lucide="info" style="width:12px;height:12px;display:inline;vertical-align:middle"></i>
-          Share this password with the user — they can change it via forgot password.
-        </p>
-      </div>
-
       <div style="display:flex;gap:10px">
-        <button type="submit" class="btn btn-green btn-md">
-          <i data-lucide="user-plus"></i> Create account
+        <button type="submit" class="btn btn-primary btn-md">
+          <i data-lucide="send"></i> Send invite
         </button>
         <button type="button" class="btn btn-outline btn-md" onclick="toggleForm()">Cancel</button>
       </div>
@@ -221,13 +192,21 @@
 
             <td style="color:#94a3b8;font-size:.85rem" th:text="${u.email}">—</td>
 
-            <!-- Role badge + change form -->
+            <!-- Role: static badge for self, dropdown for others -->
             <td>
-              <form th:action="@{/admin/users/{id}/role(id=${u.id})}" method="post"
-                    style="display:flex;align-items:center;gap:6px">
+              <!-- Own row — just show a badge, no changes allowed -->
+              <span th:if="${u.username == #authentication.name}"
+                    class="badge"
+                    th:classappend="${u.role.name() == 'ADMIN'} ? 'b-admin' : 'b-user'"
+                    th:text="${u.role}"
+                    title="You cannot change your own role">ADMIN</span>
+
+              <!-- Other users — inline role change dropdown -->
+              <form th:unless="${u.username == #authentication.name}"
+                    th:action="@{/admin/users/{id}/role(id=${u.id})}" method="post">
                 <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                <select name="role" class="input" style="padding:4px 8px;font-size:.75rem;width:auto;border-radius:8px"
-                        th:disabled="${u.username == #authentication.name}"
+                <select name="role" class="input"
+                        style="padding:4px 8px;font-size:.75rem;width:auto;border-radius:8px"
                         onchange="this.form.submit()">
                   <option th:each="r : ${roles}"
                           th:value="${r}"
@@ -237,12 +216,17 @@
               </form>
             </td>
 
-            <!-- Enabled toggle -->
+            <!-- Status -->
             <td>
-              <span th:if="${u.enabled}" class="badge b-running">
+              <!-- Invite pending (never logged in) -->
+              <span th:if="${u.lastLoginAt == null}" class="badge b-paper"
+                    title="Invite sent — user hasn't logged in yet">
+                <span class="dot" style="background:#f59e0b"></span> Pending
+              </span>
+              <span th:if="${u.lastLoginAt != null and u.enabled}" class="badge b-running">
                 <span class="dot dot-green"></span> Active
               </span>
-              <span th:unless="${u.enabled}" class="badge b-stopped">
+              <span th:if="${u.lastLoginAt != null and !u.enabled}" class="badge b-stopped">
                 <span class="dot dot-red"></span> Disabled
               </span>
             </td>
@@ -308,7 +292,7 @@ function toggleForm() {
   const wrap = document.getElementById('create-form-wrap');
   const isHidden = wrap.style.display === 'none' || wrap.style.display === '';
   wrap.style.display = isHidden ? 'block' : 'none';
-  if (isHidden) wrap.querySelector('input[type=text]').focus();
+  if (isHidden) wrap.querySelector('input[type=email]').focus();
   lucide.createIcons();
 }
 </script>
