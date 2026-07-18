@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>500 — Server Error · Harvest Technologies</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center">
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div style="position:relative;z-index:1;max-width:480px">
+  <div style="width:72px;height:72px;border-radius:50%;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;color:#fbbf24">
+    <i data-lucide="alert-triangle" style="width:32px;height:32px"></i>
+  </div>
+  <div style="font-size:4rem;font-weight:900;line-height:1;color:rgba(251,191,36,.7);margin-bottom:8px">500</div>
+  <h1 style="font-size:1.4rem;font-weight:700;color:#f1f5f9;margin-bottom:12px">Something went wrong</h1>
+  <p style="color:#64748b;font-size:.9rem;line-height:1.6;margin-bottom:32px">
+    There was a problem on our end. Please try again —
+    if it keeps happening, contact your admin.
+  </p>
+  <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+    <a th:href="@{/dashboard}" class="btn btn-primary btn-md"><i data-lucide="layout-dashboard"></i> Go to dashboard</a>
+    <a href="javascript:history.back()" class="btn btn-outline btn-md"><i data-lucide="arrow-left"></i> Go back</a>
+  </div>
+  <p style="margin-top:24px;font-size:.78rem;color:#334155">
+    Error reference: <span th:text="${timestamp}" style="font-family:monospace">—</span>
+  </p>
+</div>
+
+<script>document.addEventListener('DOMContentLoaded', () => lucide.createIcons());</script>
+</body>
+</html>

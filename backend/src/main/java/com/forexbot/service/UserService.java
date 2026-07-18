@@ -1,9 +1,11 @@
 package com.forexbot.service;
 
 import com.forexbot.dto.AcceptInviteForm;
+import com.forexbot.dto.ChangePasswordForm;
 import com.forexbot.dto.ForgotPasswordForm;
 import com.forexbot.dto.RegisterForm;
 import com.forexbot.dto.ResetPasswordForm;
+import com.forexbot.dto.UpdateProfileForm;
 import com.forexbot.model.PasswordResetToken;
 import com.forexbot.model.User;
 import com.forexbot.repository.PasswordResetTokenRepository;
@@ -223,6 +225,35 @@ public class UserService {
         user.setRole(newRole);
         userRepository.save(user);
         log.info("Admin changed role of {} → {}", user.getUsername(), newRole);
+    }
+
+    // ── Account settings ──────────────────────────────────────────────────────
+
+    public User findByUsername(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + username));
+    }
+
+    @Transactional
+    public void updateProfile(String username, UpdateProfileForm form) {
+        User user = findByUsername(username);
+        user.setFullName(form.getFullName().trim());
+        userRepository.save(user);
+        log.info("Profile updated for {}", username);
+    }
+
+    @Transactional
+    public void changePassword(String username, ChangePasswordForm form) {
+        User user = findByUsername(username);
+        if (!passwordEncoder.matches(form.getCurrentPassword(), user.getPasswordHash())) {
+            throw new IllegalArgumentException("Current password is incorrect");
+        }
+        if (!form.getNewPassword().equals(form.getConfirmPassword())) {
+            throw new IllegalArgumentException("New passwords do not match");
+        }
+        user.setPasswordHash(passwordEncoder.encode(form.getNewPassword()));
+        userRepository.save(user);
+        log.info("Password changed for {}", username);
     }
 
     // ── OAuth2 helpers ────────────────────────────────────────────────────────

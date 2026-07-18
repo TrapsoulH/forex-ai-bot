@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Account Settings — Harvest Technologies</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+
+<!-- ── Nav ── -->
+<nav class="topnav" style="position:relative">
+  <div class="topnav-inner">
+    <a class="topnav-logo" th:href="@{/dashboard}">
+      <div class="logo-box"><i data-lucide="zap"></i></div>
+      <span class="logo-name">Harvest <span class="gradient-text">Technologies</span></span>
+      <span class="logo-tag">AI Forex</span>
+    </a>
+
+    <a th:href="@{/dashboard}" class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/admin/users}" class="nav-a nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+    <a th:href="@{/account}" class="nav-a active nav-desktop-only"><i data-lucide="user"></i> Account</a>
+
+    <div style="flex:1"></div>
+
+    <div class="nav-user-pill nav-desktop-only" style="margin-right:8px">
+      <i data-lucide="user" style="width:13px;height:13px;color:#60a5fa"></i>
+      <span sec:authentication="name">user</span>
+    </div>
+
+    <form th:action="@{/logout}" method="post" style="margin:0" class="nav-desktop-only">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="nav-logout"><i data-lucide="log-out"></i> Sign out</button>
+    </form>
+
+    <button class="mob-ham" id="ham" aria-label="Menu"><span></span><span></span><span></span></button>
+  </div>
+  <div class="mob-drawer" id="mob-drawer">
+    <a th:href="@{/dashboard}" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+    <a th:href="@{/account}" class="mob-drawer-a"><i data-lucide="user"></i> Account</a>
+    <hr class="mob-drawer-sep"/>
+    <form th:action="@{/logout}" method="post" style="margin:0">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <button type="submit" class="mob-drawer-a" style="width:100%;background:none;border:none;cursor:pointer;font-family:inherit;font-size:.875rem;color:#94a3b8;text-align:left">
+        <i data-lucide="log-out"></i> Sign out
+      </button>
+    </form>
+  </div>
+</nav>
+<div class="nav-spacer"></div>
+
+<main class="page" style="max-width:720px">
+
+  <!-- Page header -->
+  <div class="page-header au">
+    <div class="ic ic-md ic-blue"><i data-lucide="user"></i></div>
+    <div>
+      <h1 class="page-title">Account settings</h1>
+      <p class="muted" style="font-size:.85rem;margin-top:2px">Update your name and password</p>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  <div th:if="${success}" class="alert alert-success au" style="margin-bottom:20px">
+    <i data-lucide="check-circle"></i>
+    <span th:text="${success}"></span>
+  </div>
+  <div th:if="${error}" class="alert alert-error au" style="margin-bottom:20px">
+    <i data-lucide="alert-circle"></i>
+    <span th:text="${error}"></span>
+  </div>
+
+  <!-- ── Profile info (read-only) ── -->
+  <div class="gcard au1" style="padding:24px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+      <div class="ic ic-md ic-muted" style="font-size:1.1rem;font-weight:800;color:#94a3b8;flex-shrink:0"
+           th:text="${user.fullName != null and !user.fullName.isEmpty()} ? ${user.fullName.substring(0,1).toUpperCase()} : ${user.username.substring(0,1).toUpperCase()}">A</div>
+      <div>
+        <div style="font-weight:700;color:#f1f5f9" th:text="${user.fullName != null and !user.fullName.isEmpty()} ? ${user.fullName} : user.username">Name</div>
+        <div style="font-size:.82rem;color:#475569" th:text="${user.email}">email</div>
+        <span class="badge"
+              th:classappend="${user.role.name() == 'ADMIN'} ? 'b-admin' : 'b-user'"
+              th:text="${user.role}" style="margin-top:6px;display:inline-block">USER</span>
+      </div>
+    </div>
+
+    <!-- Read-only fields -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div>
+        <label class="label">Username</label>
+        <div class="input-wrap">
+          <i data-lucide="at-sign" class="i-pfx"></i>
+          <input type="text" class="input" th:value="${user.username}" disabled style="opacity:.5;cursor:not-allowed"/>
+        </div>
+        <p style="font-size:.74rem;color:#334155;margin-top:4px">Usernames cannot be changed.</p>
+      </div>
+      <div>
+        <label class="label">Email address</label>
+        <div class="input-wrap">
+          <i data-lucide="mail" class="i-pfx"></i>
+          <input type="text" class="input" th:value="${user.email}" disabled style="opacity:.5;cursor:not-allowed"/>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Update full name ── -->
+  <div class="gcard au2" style="padding:24px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div class="ic ic-sm ic-blue"><i data-lucide="pencil"></i></div>
+      <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Update your name</h2>
+    </div>
+
+    <form th:action="@{/account/profile}" th:object="${profileForm}" method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+      <div style="margin-bottom:16px">
+        <label class="label">Full name</label>
+        <div class="input-wrap">
+          <i data-lucide="user" class="i-pfx"></i>
+          <input type="text" th:field="*{fullName}" class="input" placeholder="Your full name" required autocomplete="name"/>
+        </div>
+        <p class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></p>
+      </div>
+      <button type="submit" class="btn btn-primary btn-md">
+        <i data-lucide="save"></i> Save name
+      </button>
+    </form>
+  </div>
+
+  <!-- ── Change password ── -->
+  <div class="gcard au3" style="padding:24px;margin-bottom:40px">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div class="ic ic-sm ic-amber"><i data-lucide="lock"></i></div>
+      <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Change password</h2>
+    </div>
+
+    <div th:if="${passwordFormError}" class="alert alert-error" style="margin-bottom:16px">
+      <i data-lucide="alert-circle"></i>
+      <span th:text="${passwordFormError}"></span>
+    </div>
+
+    <form th:action="@{/account/password}" th:object="${passwordForm}" method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+      <div style="margin-bottom:14px">
+        <label class="label">Current password</label>
+        <div class="input-wrap">
+          <i data-lucide="lock" class="i-pfx"></i>
+          <input type="password" th:field="*{currentPassword}" class="input" placeholder="••••••••" required autocomplete="current-password"/>
+        </div>
+        <p class="field-error" th:if="${#fields.hasErrors('currentPassword')}" th:errors="*{currentPassword}"></p>
+      </div>
+
+      <div style="margin-bottom:14px">
+        <label class="label">New password</label>
+        <div class="input-wrap">
+          <i data-lucide="lock-keyhole" class="i-pfx"></i>
+          <input type="password" id="new-pw" th:field="*{newPassword}" class="input" placeholder="Min. 8 characters" required autocomplete="new-password"/>
+        </div>
+        <div class="pwd-reqs">
+          <span class="pwd-req" id="req-len"><i data-lucide="circle" style="width:10px;height:10px"></i> 8+ characters</span>
+          <span class="pwd-req" id="req-upper"><i data-lucide="circle" style="width:10px;height:10px"></i> Uppercase letter</span>
+          <span class="pwd-req" id="req-num"><i data-lucide="circle" style="width:10px;height:10px"></i> Number</span>
+          <span class="pwd-req" id="req-spec"><i data-lucide="circle" style="width:10px;height:10px"></i> Special character</span>
+        </div>
+        <p class="field-error" th:if="${#fields.hasErrors('newPassword')}" th:errors="*{newPassword}"></p>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label class="label">Confirm new password</label>
+        <div class="input-wrap">
+          <i data-lucide="lock-keyhole" class="i-pfx"></i>
+          <input type="password" th:field="*{confirmPassword}" class="input" placeholder="••••••••" required autocomplete="new-password"/>
+        </div>
+        <p class="field-error" th:if="${#fields.hasErrors('confirmPassword')}" th:errors="*{confirmPassword}"></p>
+      </div>
+
+      <button type="submit" class="btn btn-md" style="background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3)">
+        <i data-lucide="key"></i> Update password
+      </button>
+    </form>
+  </div>
+
+</main>
+
+<footer class="site-footer">
+  &copy; 2025 <a href="/">Harvest Technologies</a>
+</footer>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  lucide.createIcons();
+
+  document.querySelectorAll('.alert').forEach(el => {
+    setTimeout(() => {
+      el.style.transition = 'opacity .5s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 500);
+    }, 4000);
+  });
+
+  const ham = document.getElementById('ham');
+  const drawer = document.getElementById('mob-drawer');
+  if (ham && drawer) {
+    ham.addEventListener('click', () => {
+      ham.classList.toggle('open');
+      drawer.style.display = drawer.style.display === 'flex' ? 'none' : 'flex';
+    });
+  }
+
+  const pwd = document.getElementById('new-pw');
+  if (pwd) {
+    const rules = {
+      'req-len':   p => p.length >= 8,
+      'req-upper': p => /[A-Z]/.test(p),
+      'req-num':   p => /\d/.test(p),
+      'req-spec':  p => /[^a-zA-Z0-9]/.test(p),
+    };
+    pwd.addEventListener('input', function () {
+      Object.entries(rules).forEach(([id, test]) => {
+        const el = document.getElementById(id);
+        const ok = test(this.value);
+        el.classList.toggle('ok', ok);
+        el.innerHTML = `<i data-lucide="${ok ? 'check-circle' : 'circle'}" style="width:10px;height:10px"></i> ` + el.textContent.replace(/^\S+\s*/, '');
+      });
+      lucide.createIcons();
+    });
+  }
+});
+</script>
+</body>
+</html>

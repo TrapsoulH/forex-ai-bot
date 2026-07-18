@@ -6,6 +6,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>User Management — Harvest Technologies</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
   <link rel="stylesheet" th:href="@{/css/app.css}"/>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 </head>
@@ -18,13 +19,13 @@
 <!-- ── Top Navigation ── -->
 <nav class="topnav" style="position:relative">
   <div class="topnav-inner">
-    <a class="topnav-logo" href="/">
+    <a class="topnav-logo" th:href="@{/dashboard}">
       <div class="logo-box"><i data-lucide="zap"></i></div>
       <span class="logo-name">Harvest <span class="gradient-text">Technologies</span></span>
       <span class="logo-tag">AI Forex</span>
     </a>
 
-    <a th:href="@{/}" class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/dashboard}" class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
     <a th:href="@{/admin/users}" class="nav-a active nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
 
     <div style="flex:1"></div>
@@ -46,7 +47,7 @@
   </div>
 
   <div class="mob-drawer" id="mob-drawer">
-    <a href="/" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/dashboard}" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
     <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
     <hr class="mob-drawer-sep"/>
     <form th:action="@{/logout}" method="post" style="margin:0">
@@ -277,6 +278,15 @@
 <script>
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
+
+  // Auto-dismiss flash alerts after 4 seconds
+  document.querySelectorAll('.alert').forEach(el => {
+    setTimeout(() => {
+      el.style.transition = 'opacity .5s';
+      el.style.opacity = '0';
+      setTimeout(() => el.remove(), 500);
+    }, 4000);
+  });
 
   const ham = document.getElementById('ham');
   const drawer = document.getElementById('mob-drawer');
