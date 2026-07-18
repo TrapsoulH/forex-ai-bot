@@ -110,6 +110,12 @@ Track your progress through each phase. Check off items as you complete them.
 - [x] **CP-UI-14** Custom error pages — branded 404, 403, 500
 - [x] **CP-UI-15** Branded HTML email templates — invite + password reset (Thymeleaf + MimeMessage)
 - [ ] **CP-UI-16** feature/public-pages branch merged to main via PR
+- [x] **CP-UI-17** Favicon — ⚡ SVG icon across all pages
+- [x] **CP-UI-18** Conditional Google OAuth button — hidden when credentials not configured
+- [x] **CP-UI-19** Auto-dismiss flash alerts — fade out after 4 seconds
+- [x] **CP-UI-20** Account settings page (/account) — update name, change password
+- [x] **CP-UI-21** Bot settings page (/settings/bot, admin only) — edit all trading params from UI
+- [ ] **CP-UI-22** feature/enhancements branch merged to main via PR
 
 ---
 
