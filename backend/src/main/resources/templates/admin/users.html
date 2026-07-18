@@ -31,10 +31,13 @@
 
     <div style="flex:1"></div>
 
-    <span th:if="${botEnabled}" class="badge b-running nav-desktop-only" style="margin-right:8px">
+    <span th:if="${!marketOpen}" class="badge b-closed nav-desktop-only" style="margin-right:8px">
+      <span class="dot dot-grey"></span> Market Closed
+    </span>
+    <span th:if="${marketOpen and botEnabled}" class="badge b-running nav-desktop-only" style="margin-right:8px">
       <span class="dot dot-green"></span> Bot Running
     </span>
-    <span th:unless="${botEnabled}" class="badge b-stopped nav-desktop-only" style="margin-right:8px">
+    <span th:if="${marketOpen and !botEnabled}" class="badge b-stopped nav-desktop-only" style="margin-right:8px">
       <span class="dot dot-red"></span> Bot Stopped
     </span>
 

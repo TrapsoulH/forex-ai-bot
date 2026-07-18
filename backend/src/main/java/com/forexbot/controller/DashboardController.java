@@ -5,6 +5,7 @@ import com.forexbot.repository.SignalRepository;
 import com.forexbot.repository.TradeRepository;
 import com.forexbot.service.SignalPollerService;
 import com.forexbot.service.TradeService;
+import com.forexbot.service.WeeklyReviewService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Controller;
@@ -24,6 +25,7 @@ public class DashboardController {
     private final SignalRepository signalRepository;
     private final SignalPollerService pollerService;
     private final TradeService tradeService;
+    private final WeeklyReviewService weeklyReview;
     private final WebClient mt5Client;
 
     public DashboardController(
@@ -31,12 +33,14 @@ public class DashboardController {
             SignalRepository signalRepository,
             SignalPollerService pollerService,
             TradeService tradeService,
+            WeeklyReviewService weeklyReview,
             @Qualifier("mt5WebClient") WebClient mt5Client
     ) {
         this.tradeRepository  = tradeRepository;
         this.signalRepository = signalRepository;
         this.pollerService    = pollerService;
         this.tradeService     = tradeService;
+        this.weeklyReview     = weeklyReview;
         this.mt5Client        = mt5Client;
     }
 
@@ -67,6 +71,7 @@ public class DashboardController {
         model.addAttribute("recentSignals", signalRepository.findTop100ByOrderByCreatedAtDesc());
         model.addAttribute("totalProfit", tradeRepository.totalProfit());
         model.addAttribute("openTradeCount", openCount);
+        model.addAttribute("weeklyStats", weeklyReview.thisWeek());
         return "dashboard/index";
     }
 

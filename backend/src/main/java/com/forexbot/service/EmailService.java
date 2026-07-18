@@ -87,6 +87,27 @@ public class EmailService {
                  ctx);
     }
 
+    // ── Weekly review ─────────────────────────────────────────────────────────
+
+    public void sendWeeklyReview(String toEmail, com.forexbot.dto.WeeklyStatsDto stats) {
+        if (!isMailConfigured()) {
+            log.warn("╔══ WEEKLY REVIEW (dev mode — no SMTP) ═════════════════════════╗");
+            log.warn("  To: {} | Signals: {} | Trades: {} | P&L: {}",
+                    toEmail, stats.getTotalSignals(), stats.getTotalTrades(), stats.getTotalPnl());
+            log.warn("╚══════════════════════════════════════════════════════════════╝");
+            return;
+        }
+
+        Context ctx = new Context();
+        ctx.setVariable("stats", stats);
+        ctx.setVariable("dashboardUrl", baseUrl + "/dashboard");
+
+        sendHtml(toEmail,
+                 "Your weekly trading review — Harvest Technologies",
+                 "email/weekly-review",
+                 ctx);
+    }
+
     // ── Internal helpers ──────────────────────────────────────────────────────
 
     private void sendHtml(String to, String subject, String templateName, Context ctx) {

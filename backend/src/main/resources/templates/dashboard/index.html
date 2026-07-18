@@ -36,11 +36,14 @@
     <!-- Spacer -->
     <div style="flex:1"></div>
 
-    <!-- Bot status pill -->
-    <span th:if="${botEnabled}" class="badge b-running nav-desktop-only" style="margin-right:8px">
+    <!-- Bot / market status pill -->
+    <span th:if="${!marketOpen}" class="badge b-closed nav-desktop-only" style="margin-right:8px">
+      <span class="dot dot-grey"></span> Market Closed
+    </span>
+    <span th:if="${marketOpen and botEnabled}" class="badge b-running nav-desktop-only" style="margin-right:8px">
       <span class="dot dot-green"></span> Bot Running
     </span>
-    <span th:unless="${botEnabled}" class="badge b-stopped nav-desktop-only" style="margin-right:8px">
+    <span th:if="${marketOpen and !botEnabled}" class="badge b-stopped nav-desktop-only" style="margin-right:8px">
       <span class="dot dot-red"></span> Bot Stopped
     </span>
 
@@ -158,6 +161,84 @@
       <div class="stat-card-value" style="font-size:1rem;padding-top:4px"
            th:text="${account != null ? account['server'] : 'Disconnected'}">—</div>
       <div class="stat-card-sub">MT5 connection</div>
+    </div>
+
+  </div>
+
+  <!-- ══ Weekly Review ══════════════════════════════════════════════════════ -->
+  <div class="gcard au3" style="margin-bottom:32px;padding:24px">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="ic ic-md ic-blue"><i data-lucide="calendar-range"></i></div>
+        <div>
+          <div style="font-size:.95rem;font-weight:700;color:#f1f5f9">Week in review</div>
+          <div class="muted" style="font-size:.78rem;margin-top:1px">This trading week so far</div>
+        </div>
+      </div>
+      <!-- Win rate badge -->
+      <span th:if="${weeklyStats.hasData}"
+            th:class="${weeklyStats.isWinning()} ? 'badge b-running' : 'badge b-stopped'"
+            style="font-size:.8rem;padding:4px 12px">
+        Win rate: <strong th:text="${weeklyStats.winRateDisplay()}">—</strong>
+      </span>
+      <span th:unless="${weeklyStats.hasData}" class="badge b-user" style="font-size:.78rem;padding:4px 12px">No activity yet this week</span>
+    </div>
+
+    <!-- ── Top stats row ── -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:20px">
+
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px">
+        <div class="muted" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Signals</div>
+        <div style="font-size:1.5rem;font-weight:800;color:#60a5fa" th:text="${weeklyStats.totalSignals}">0</div>
+        <div class="muted" style="font-size:.72rem;margin-top:2px"
+             th:text="|${weeklyStats.buySignals} buy · ${weeklyStats.sellSignals} sell|">0 buy · 0 sell</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px">
+        <div class="muted" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Trades</div>
+        <div style="font-size:1.5rem;font-weight:800;color:#f1f5f9" th:text="${weeklyStats.totalTrades}">0</div>
+        <div class="muted" style="font-size:.72rem;margin-top:2px"
+             th:text="|${weeklyStats.winTrades}W · ${weeklyStats.lossTrades}L · ${weeklyStats.openTrades} open|">0W · 0L · 0 open</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px">
+        <div class="muted" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Week P&amp;L</div>
+        <div style="font-size:1.5rem;font-weight:800"
+             th:style="${weeklyStats.isPnlPositive()} ? 'color:#34d399' : 'color:#f87171'"
+             th:text="${weeklyStats.formattedPnl()}">+0.00</div>
+        <div class="muted" style="font-size:.72rem;margin-top:2px">Closed trades</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px">
+        <div class="muted" style="font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Best pair</div>
+        <div style="font-size:1.1rem;font-weight:800;color:#f1f5f9;font-family:monospace"
+             th:text="${weeklyStats.bestPair ?: '—'}">—</div>
+        <div class="muted" style="font-size:.72rem;margin-top:2px"
+             th:if="${weeklyStats.bestPair != null}"
+             th:text="${weeklyStats.formattedPairPnl(weeklyStats.pnlBySymbol[weeklyStats.bestPair])}"></div>
+      </div>
+
+    </div>
+
+    <!-- ── P&L by pair ── -->
+    <div th:if="${weeklyStats.hasData}">
+      <div class="muted" style="font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px">P&amp;L by pair</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div th:each="entry : ${weeklyStats.pnlBySymbol}"
+             style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:.8rem;font-weight:700;color:#94a3b8;font-family:monospace;width:64px"
+                th:text="${entry.key}">EURUSD</span>
+          <div style="flex:1;height:6px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden">
+            <div style="height:100%;border-radius:4px;width:60%"
+                 th:style="${weeklyStats.isPairPnlPositive(entry.value)} ? 'background:#10b981' : 'background:#ef4444'">
+            </div>
+          </div>
+          <span style="font-size:.8rem;font-weight:700;min-width:52px;text-align:right"
+                th:style="${weeklyStats.isPairPnlPositive(entry.value)} ? 'color:#34d399' : 'color:#f87171'"
+                th:text="${weeklyStats.formattedPairPnl(entry.value)}">+0.00</span>
+        </div>
+      </div>
     </div>
 
   </div>

@@ -102,7 +102,7 @@
     .section { padding: 96px 24px; }
     .section-inner { max-width: 1200px; margin: 0 auto; }
     .section-label { font-size: .8rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #60a5fa; margin-bottom: 14px; }
-    .section-title { font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 800; line-height: 1.2; margin-bottom: 16px; }
+    .section-title { font-size: clamp(1.8rem, 3.5vw, 2.6rem); font-weight: 800; line-height: 1.2; margin-bottom: 16px; color: var(--text); text-transform: none; display: block; letter-spacing: normal; }
     .section-sub { font-size: 1rem; color: var(--muted); max-width: 560px; line-height: 1.7; }
 
     /* ── Features ── */
@@ -118,7 +118,7 @@
     .feat-card p { font-size: .88rem; color: var(--muted); line-height: 1.65; }
 
     /* ── How it works ── */
-    .hiw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 56px; position: relative; }
+    .hiw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; margin-top: 20px; position: relative; }
     .hiw-grid::before { content: ''; position: absolute; top: 28px; left: 15%; right: 15%; height: 1px; background: linear-gradient(90deg, transparent, rgba(59,130,246,.3), rgba(16,185,129,.3), transparent); }
     .hiw-step { text-align: center; position: relative; }
     .hiw-num { width: 56px; height: 56px; border-radius: 50%; background: rgba(59,130,246,.12); border: 1px solid rgba(59,130,246,.3); color: #60a5fa; font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; position: relative; z-index: 1; }
@@ -150,6 +150,57 @@
     .l-footer-links a { color: var(--muted); font-size: .82rem; text-decoration: none; transition: color .2s; }
     .l-footer-links a:hover { color: var(--text); }
     .l-footer-copy { font-size: .82rem; color: var(--muted); }
+
+    /* ── Animations ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+    @keyframes slideRight {
+      from { opacity: 0; transform: translateX(48px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-12px); }
+    }
+    @keyframes scaleIn {
+      from { opacity: 0; transform: scale(.92); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
+    /* Hero entrance — fires immediately on page load */
+    .hero-badge   { animation: fadeUp .6s cubic-bezier(.22,.68,0,1.2) both; animation-delay: .05s; }
+    .hero h1      { animation: fadeUp .7s cubic-bezier(.22,.68,0,1.1) both; animation-delay: .2s; }
+    .hero-sub     { animation: fadeUp .7s ease both; animation-delay: .38s; }
+    .hero-actions { animation: fadeUp .7s ease both; animation-delay: .52s; }
+    .hero-trust   { animation: fadeUp .6s ease both; animation-delay: .66s; }
+    .hero-visual  { animation: slideRight .9s cubic-bezier(.22,.68,0,1.1) both; animation-delay: .28s; }
+
+    /* Hero card floats gently */
+    .hero-card { animation: float 6s ease-in-out infinite; }
+
+    /* Signal rows stagger in */
+    .signal-row { opacity: 0; animation: fadeUp .5s ease both; }
+    .signal-row:nth-child(1) { animation-delay: .85s; }
+    .signal-row:nth-child(2) { animation-delay: 1.0s; }
+    .signal-row:nth-child(3) { animation-delay: 1.15s; }
+    .signal-row:nth-child(4) { animation-delay: 1.3s; }
+
+    /* Mini stats in hero */
+    .hero-mini-stats { animation: fadeIn .5s ease both; animation-delay: 1.5s; opacity: 0; }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity .65s ease, transform .65s ease;
+    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
 
     /* ── Mobile ── */
     @media (max-width: 768px) {
@@ -307,20 +358,20 @@
 <!-- ══════════════════════════════════════════════════ STATS BAR ══ -->
 <div class="stats-bar">
   <div class="stats-bar-inner">
-    <div class="stat-item">
-      <div class="stat-val">4</div>
+    <div class="stat-item reveal" data-delay="0">
+      <div class="stat-val" data-count="4" data-suffix="">4</div>
       <div class="stat-label">Pairs monitored</div>
     </div>
-    <div class="stat-item">
-      <div class="stat-val">60s</div>
+    <div class="stat-item reveal" data-delay="100">
+      <div class="stat-val" data-count="60" data-suffix="s">60s</div>
       <div class="stat-label">Scan frequency</div>
     </div>
-    <div class="stat-item">
-      <div class="stat-val">70%</div>
+    <div class="stat-item reveal" data-delay="200">
+      <div class="stat-val" data-count="70" data-suffix="%">70%</div>
       <div class="stat-label">ML model accuracy</div>
     </div>
-    <div class="stat-item">
-      <div class="stat-val">24/5</div>
+    <div class="stat-item reveal" data-delay="300">
+      <div class="stat-val" data-count="0" data-suffix="">24/5</div>
       <div class="stat-label">Market hours covered</div>
     </div>
   </div>
@@ -329,17 +380,17 @@
 <!-- ══════════════════════════════════════════════════ FEATURES ══ -->
 <section class="section" id="features">
   <div class="section-inner">
-    <div class="section-label">What's included</div>
-    <h2 class="section-title">
+    <div class="section-label reveal">What's included</div>
+    <h2 class="section-title reveal" data-delay="80">
       Built for traders who want<br/>more than a gut feeling.
     </h2>
-    <p class="section-sub">
+    <p class="section-sub reveal" data-delay="160">
       Everything from signal generation to position management, in one place.
       No bloat, no unnecessary complexity.
     </p>
 
     <div class="features-grid">
-      <div class="feat-card">
+      <div class="feat-card reveal" data-delay="0">
         <div class="feat-icon feat-icon-blue"><i data-lucide="cpu" style="width:20px;height:20px"></i></div>
         <h3>Dual-gate signal engine</h3>
         <p>
@@ -348,7 +399,7 @@
           setups that actually matter.
         </p>
       </div>
-      <div class="feat-card">
+      <div class="feat-card reveal" data-delay="100">
         <div class="feat-icon feat-icon-green"><i data-lucide="bar-chart-2" style="width:20px;height:20px"></i></div>
         <h3>Live trading dashboard</h3>
         <p>
@@ -357,7 +408,7 @@
           Close a trade manually or let the bot handle it.
         </p>
       </div>
-      <div class="feat-card">
+      <div class="feat-card reveal" data-delay="200">
         <div class="feat-icon feat-icon-amber"><i data-lucide="shield" style="width:20px;height:20px"></i></div>
         <h3>Risk controls</h3>
         <p>
@@ -366,7 +417,7 @@
           touching real money.
         </p>
       </div>
-      <div class="feat-card">
+      <div class="feat-card reveal" data-delay="300">
         <div class="feat-icon feat-icon-purple"><i data-lucide="users" style="width:20px;height:20px"></i></div>
         <h3>Team access</h3>
         <p>
@@ -379,9 +430,9 @@
 </section>
 
 <!-- ══════════════════════════════════════════════ HOW IT WORKS ══ -->
-<section class="section" id="how-it-works" style="background: rgba(13,31,53,.4); padding-top: 80px; padding-bottom: 80px;">
+<section class="section" id="how-it-works" style="background: rgba(13,31,53,.4); padding-top: 64px; padding-bottom: 72px;">
   <div class="section-inner">
-    <div style="text-align:center;margin-bottom:48px">
+    <div class="reveal" style="text-align:center;margin-bottom:20px">
       <div class="section-label" style="text-align:center">Getting started</div>
       <h2 class="section-title" style="text-align:center">Up and running in three steps</h2>
       <p class="section-sub" style="margin:0 auto;text-align:center">
@@ -390,17 +441,17 @@
     </div>
 
     <div class="hiw-grid" style="margin-top:0">
-      <div class="hiw-step">
+      <div class="hiw-step reveal" data-delay="0">
         <div class="hiw-num">1</div>
         <h3>Connect your MT5 account</h3>
         <p>Link your MetaTrader 5 account. Start with a demo — no real money at risk while you get comfortable.</p>
       </div>
-      <div class="hiw-step">
+      <div class="hiw-step reveal" data-delay="160">
         <div class="hiw-num">2</div>
         <h3>The engine starts scanning</h3>
         <p>It checks EURUSD, GBPUSD, USDJPY, and AUDUSD every 60 seconds on the hourly chart — automatically.</p>
       </div>
-      <div class="hiw-step">
+      <div class="hiw-step reveal" data-delay="320">
         <div class="hiw-num">3</div>
         <h3>Trade or just watch</h3>
         <p>Let the bot place trades on your behalf, or review each signal yourself and decide. You stay in control either way.</p>
@@ -412,15 +463,15 @@
 <!-- ════════════════════════════════════════════ SIGNAL PREVIEW ══ -->
 <section class="section" id="signals">
   <div class="section-inner">
-    <div class="section-label">Signal examples</div>
-    <h2 class="section-title">What you actually see</h2>
-    <p class="section-sub">
+    <div class="section-label reveal">Signal examples</div>
+    <h2 class="section-title reveal" data-delay="80">What you actually see</h2>
+    <p class="section-sub reveal" data-delay="160">
       Every signal shows the pair, direction, and the model's confidence level.
       You can always see what triggered it — no black box.
     </p>
 
     <div class="preview-grid">
-      <div class="preview-card">
+      <div class="preview-card reveal" data-delay="0">
         <div>
           <div class="preview-pair">EUR / USD</div>
           <div class="preview-time">Today, 09:00 · H1</div>
@@ -430,7 +481,7 @@
           <div class="preview-conf">ML confidence<span>87%</span></div>
         </div>
       </div>
-      <div class="preview-card">
+      <div class="preview-card reveal" data-delay="100">
         <div>
           <div class="preview-pair">GBP / USD</div>
           <div class="preview-time">Today, 10:00 · H1</div>
@@ -440,7 +491,7 @@
           <div class="preview-conf">ML confidence<span>74%</span></div>
         </div>
       </div>
-      <div class="preview-card">
+      <div class="preview-card reveal" data-delay="200">
         <div>
           <div class="preview-pair">USD / JPY</div>
           <div class="preview-time">Today, 11:00 · H1</div>
@@ -450,7 +501,7 @@
           <div class="preview-conf">ML confidence<span>91%</span></div>
         </div>
       </div>
-      <div class="preview-card">
+      <div class="preview-card reveal" data-delay="300">
         <div>
           <div class="preview-pair">AUD / USD</div>
           <div class="preview-time">Today, 08:00 · H1</div>
@@ -466,7 +517,7 @@
 
 <!-- ══════════════════════════════════════════════════════ CTA ══ -->
 <section class="cta-section">
-  <div class="cta-inner">
+  <div class="cta-inner reveal">
     <h2>Give it a try —<br/><span style="background:linear-gradient(135deg,#60a5fa,#34d399);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">it's free to start.</span></h2>
     <p>
       Create an account, connect your MT5 demo, and start seeing signals straight away.
@@ -504,11 +555,51 @@
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
 
-  // Glassmorphism nav on scroll
+  // ── Nav glassmorphism on scroll ──
   const nav = document.getElementById('l-nav');
   window.addEventListener('scroll', () => {
     nav.classList.toggle('scrolled', window.scrollY > 40);
   }, { passive: true });
+
+  // ── Scroll reveal (Intersection Observer) ──
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const delay = parseInt(entry.target.dataset.delay || 0);
+      setTimeout(() => entry.target.classList.add('visible'), delay);
+      revealObserver.unobserve(entry.target);
+    });
+  }, { threshold: 0.12 });
+
+  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+  // ── Count-up for stats ──
+  function countUp(el, target, suffix, duration) {
+    const start = performance.now();
+    function tick(now) {
+      const progress = Math.min((now - start) / duration, 1);
+      // ease-out
+      const eased = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.floor(eased * target) + suffix;
+      if (progress < 1) requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  const statsObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      document.querySelectorAll('.stat-val[data-count]').forEach(el => {
+        const target = parseInt(el.dataset.count);
+        const suffix = el.dataset.suffix;
+        if (target > 0) countUp(el, target, suffix, 1000);
+      });
+      statsObserver.disconnect();
+    });
+  }, { threshold: 0.4 });
+
+  const statsBar = document.querySelector('.stats-bar');
+  if (statsBar) statsObserver.observe(statsBar);
 });
 </script>
 </body>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Weekly Review — Harvest Technologies</title>
+</head>
+<body style="margin:0;padding:0;background:#060d18;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#f1f5f9">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#060d18;padding:40px 16px">
+  <tr>
+    <td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
+
+        <!-- ── Header ── -->
+        <tr>
+          <td style="padding-bottom:28px;text-align:center">
+            <div style="display:inline-flex;align-items:center;gap:10px;margin-bottom:16px">
+              <div style="width:36px;height:36px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);border-radius:9px;display:inline-block;vertical-align:middle;line-height:36px;text-align:center;font-weight:900;font-size:18px;color:#fff">⚡</div>
+              <span style="font-weight:800;font-size:1.1rem;color:#f1f5f9;vertical-align:middle">Harvest <span style="background:linear-gradient(135deg,#3b82f6,#10b981);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Technologies</span></span>
+            </div>
+            <div style="font-size:.75rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#3b82f6">Weekly review</div>
+            <h1 style="margin:8px 0 4px;font-size:1.6rem;font-weight:800;color:#f1f5f9">Week in review</h1>
+            <p style="margin:0;font-size:.88rem;color:#475569">Market closed for the weekend. Here's how this week went.</p>
+          </td>
+        </tr>
+
+        <!-- ── Win rate banner ── -->
+        <tr>
+          <td style="padding-bottom:24px">
+            <div th:if="${stats.hasData}"
+                 th:style="${stats.isWinning()} ? 'background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.25);border-radius:12px;padding:20px 24px;text-align:center' : 'background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);border-radius:12px;padding:20px 24px;text-align:center'">
+              <div th:style="${stats.isWinning()} ? 'font-size:2.8rem;font-weight:900;color:#34d399;line-height:1' : 'font-size:2.8rem;font-weight:900;color:#f87171;line-height:1'"
+                   th:text="${stats.winRateDisplay()}">—</div>
+              <div style="font-size:.82rem;color:#64748b;margin-top:6px">Win rate this week</div>
+            </div>
+            <div th:unless="${stats.hasData}"
+                 style="background:rgba(100,116,139,.1);border:1px solid rgba(100,116,139,.2);border-radius:12px;padding:20px 24px;text-align:center">
+              <div style="font-size:1rem;color:#64748b">No trades fired this week.</div>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ── 4-stat grid ── -->
+        <tr>
+          <td style="padding-bottom:24px">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="48%" style="background:rgba(13,31,53,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px;text-align:center">
+                  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:6px">Signals fired</div>
+                  <div style="font-size:1.8rem;font-weight:800;color:#60a5fa" th:text="${stats.totalSignals}">0</div>
+                  <div style="font-size:.72rem;color:#334155;margin-top:4px"
+                       th:text="|${stats.buySignals} BUY · ${stats.sellSignals} SELL · ${stats.holdSignals} HOLD|">0 BUY · 0 SELL · 0 HOLD</div>
+                </td>
+                <td width="4%"></td>
+                <td width="48%" style="background:rgba(13,31,53,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px;text-align:center">
+                  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:6px">Trades taken</div>
+                  <div style="font-size:1.8rem;font-weight:800;color:#f1f5f9" th:text="${stats.totalTrades}">0</div>
+                  <div style="font-size:.72rem;color:#334155;margin-top:4px"
+                       th:text="|${stats.winTrades} wins · ${stats.lossTrades} losses · ${stats.openTrades} open|">0 wins · 0 losses · 0 open</div>
+                </td>
+              </tr>
+              <tr><td colspan="3" style="height:12px"></td></tr>
+              <tr>
+                <td width="48%" style="background:rgba(13,31,53,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px;text-align:center">
+                  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:6px">Week P&amp;L</div>
+                  <div style="font-size:1.8rem;font-weight:800"
+                       th:style="${stats.isPnlPositive()} ? 'color:#34d399' : 'color:#f87171'"
+                       th:text="${stats.formattedPnl()}">+0.00</div>
+                  <div style="font-size:.72rem;color:#334155;margin-top:4px">Closed positions</div>
+                </td>
+                <td width="4%"></td>
+                <td width="48%" style="background:rgba(13,31,53,.8);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px;text-align:center">
+                  <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:6px">Best pair</div>
+                  <div style="font-size:1.4rem;font-weight:800;color:#f1f5f9;font-family:monospace" th:text="${stats.bestPair ?: '—'}">—</div>
+                  <div style="font-size:.72rem;color:#334155;margin-top:4px"
+                       th:if="${stats.bestPair != null}"
+                       th:text="${stats.formattedPairPnl(stats.pnlBySymbol[stats.bestPair])}"></div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- ── P&L by pair ── -->
+        <tr th:if="${stats.hasData}">
+          <td style="padding-bottom:24px">
+            <div style="background:rgba(13,31,53,.8);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:20px 24px">
+              <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#475569;margin-bottom:14px">P&amp;L by pair</div>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr th:each="entry : ${stats.pnlBySymbol}" style="margin-bottom:10px">
+                  <td style="font-size:.82rem;font-weight:700;color:#94a3b8;font-family:monospace;width:70px;padding-bottom:10px"
+                      th:text="${entry.key}">EURUSD</td>
+                  <td style="padding-bottom:10px">
+                    <div style="height:6px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden">
+                      <div style="height:100%;width:60%;border-radius:4px"
+                           th:style="${stats.isPairPnlPositive(entry.value)} ? 'background:#10b981' : 'background:#ef4444'"></div>
+                    </div>
+                  </td>
+                  <td style="font-size:.82rem;font-weight:700;text-align:right;width:60px;padding-bottom:10px"
+                      th:style="${stats.isPairPnlPositive(entry.value)} ? 'color:#34d399' : 'color:#f87171'"
+                      th:text="${stats.formattedPairPnl(entry.value)}">+0.00</td>
+                </tr>
+              </table>
+            </div>
+          </td>
+        </tr>
+
+        <!-- ── CTA ── -->
+        <tr>
+          <td style="text-align:center;padding-bottom:36px">
+            <a th:href="${dashboardUrl}"
+               style="display:inline-block;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:700;font-size:.95rem">
+              Open dashboard
+            </a>
+          </td>
+        </tr>
+
+        <!-- ── Footer ── -->
+        <tr>
+          <td style="text-align:center;padding-top:16px;border-top:1px solid rgba(255,255,255,.06)">
+            <p style="font-size:.75rem;color:#1e3a5f;margin:0">
+              Harvest Technologies · AI Forex Platform<br/>
+              You're receiving this because you have an account on this platform.
+            </p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
