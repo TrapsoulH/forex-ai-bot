@@ -1,0 +1,29 @@
+# ── PROD profile — GCP Cloud Run + MetaApi ────────────────────
+# All values come from GCP environment variables / Secret Manager.
+# Never hardcode credentials here.
+
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:${DB_PORT:3306}/${DB_NAME}?useSSL=true&serverTimezone=UTC
+    username: ${DB_USER}
+    password: ${DB_PASSWORD}
+
+services:
+  mt5-bridge:
+    url: ${MT5_BRIDGE_URL}   # MetaApi REST endpoint
+  signal-engine:
+    url: ${SIGNAL_ENGINE_URL}
+
+bot:
+  paper-trading: false        # LIVE trading — only enable after UAT sign-off
+  scan-interval-seconds: ${SCAN_INTERVAL:60}
+  default-volume: ${DEFAULT_VOLUME:0.01}
+  sl-pips: ${SL_PIPS:30.0}
+  tp-pips: ${TP_PIPS:60.0}
+  max-open-trades: ${MAX_OPEN_TRADES:3}
+  symbols: ${SYMBOLS:EURUSD,GBPUSD,USDJPY,AUDUSD}
+
+logging:
+  level:
+    com.forexbot: WARN
+    org.springframework.web: WARN

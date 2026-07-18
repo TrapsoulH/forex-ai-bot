@@ -1,0 +1,73 @@
+version: "3.9"
+
+# ── NOTE ──────────────────────────────────────────────────────────────────────
+# mt5-bridge is NOT included here — it must run natively on Windows because
+# the MetaTrader5 Python package requires the MT5 desktop app.
+# Run mt5-bridge manually on your Windows machine: `python mt5-bridge/src/main.py`
+# Then update MT5_BRIDGE_URL in .env to point to your machine's IP.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  mysql:
+    image: mysql:8.3
+    container_name: forexbot-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-rootchangeme}
+      MYSQL_DATABASE: ${DB_NAME:-forexbot}
+      MYSQL_USER: ${DB_USER:-forexbot}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-changeme}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-rootchangeme}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  signal-engine:
+    build:
+      context: ./signal-engine
+      dockerfile: Dockerfile
+    container_name: forexbot-signal-engine
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      SIGNAL_MT5_BRIDGE_URL: ${MT5_BRIDGE_URL:-http://host.docker.internal:8001}
+      SIGNAL_BACKEND_URL: http://backend:8080
+    ports:
+      - "8002:8002"
+    volumes:
+      - signal_models:/app/models
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: forexbot-backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      MT5_BRIDGE_URL: ${MT5_BRIDGE_URL:-http://host.docker.internal:8001}
+      SIGNAL_ENGINE_URL: http://signal-engine:8002
+      PAPER_TRADING: ${PAPER_TRADING:-true}
+    ports:
+      - "8080:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      signal-engine:
+        condition: service_started
+
+volumes:
+  mysql_data:
+  signal_models:

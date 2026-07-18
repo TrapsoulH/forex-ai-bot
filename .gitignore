@@ -1,0 +1,36 @@
+# Python virtual environments
+venv/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+
+# ML models (large binary files — retrain per environment)
+signal-engine/models/
+
+# Environment secrets — never commit these
+.env
+backend/src/main/resources/application-dev.yml
+backend/src/main/resources/application-local.yml
+
+# Java / Maven
+backend/target/
+*.class
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# Docker volumes
+mysql_data/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db

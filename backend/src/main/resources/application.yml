@@ -1,0 +1,54 @@
+spring:
+  application:
+    name: forex-ai-bot-backend
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:forexbot}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
+    username: ${DB_USER:forexbot}
+    password: ${DB_PASSWORD:forexbot123}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: none              # Flyway owns the schema — Hibernate must not touch it
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true     # safe to run against an existing (empty) DB
+    validate-on-migrate: true     # fail fast if migrations are corrupted
+
+  thymeleaf:
+    cache: false
+    prefix: classpath:/templates/
+    suffix: .html
+
+server:
+  port: ${SERVER_PORT:8080}
+
+# External Python services
+services:
+  mt5-bridge:
+    url: ${MT5_BRIDGE_URL:http://localhost:8001}
+  signal-engine:
+    url: ${SIGNAL_ENGINE_URL:http://localhost:8002}
+
+# Bot settings
+bot:
+  paper-trading: ${PAPER_TRADING:true}
+  scan-interval-seconds: ${SCAN_INTERVAL:60}     # how often to poll for signals
+  default-volume: ${DEFAULT_VOLUME:0.01}
+  sl-pips: ${SL_PIPS:30.0}
+  tp-pips: ${TP_PIPS:60.0}
+  max-open-trades: ${MAX_OPEN_TRADES:3}
+  symbols: ${SYMBOLS:EURUSD,GBPUSD,USDJPY,AUDUSD}
+
+logging:
+  level:
+    com.forexbot: DEBUG
+    org.springframework.web: INFO
