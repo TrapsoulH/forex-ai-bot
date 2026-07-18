@@ -1,0 +1,13 @@
+{
+  "name": "blue-ocean-hub-docs",
+  "version": "1.0.0",
+  "description": "Word document generators for Blue Ocean Hub",
+  "scripts": {
+    "docs": "npm run docs:tech-ref && npm run docs:overview",
+    "docs:tech-ref": "node generators/tech-ref.js",
+    "docs:overview": "node generators/overview.js"
+  },
+  "dependencies": {
+    "docx": "^8.5.0"
+  }
+}

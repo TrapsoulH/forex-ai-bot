@@ -307,3 +307,26 @@ IntelliJ IDEA treats this as a Java project. For Python services:
 2. `File → Project Structure → Modules → + → Import Module`
 3. Select `mt5-bridge/` → Python module type → set SDK to Python 3.11
 4. Repeat for `signal-engine/`
+
+---
+
+## Documentation
+
+Word documents for the technical reference and trader overview are generated from scripts — the `.docx` outputs are **not** committed to the repo.
+
+**To regenerate:**
+
+```bash
+cd docs
+npm install        # first time only — installs the docx package
+npm run docs       # generates both docs into docs/output/
+```
+
+Individual commands:
+
+```bash
+npm run docs:tech-ref    # Technical Reference Document
+npm run docs:overview    # Platform Overview (non-technical)
+```
+
+Output files land in `docs/output/` which is `.gitignore`d. Share them directly with clients or team members from there.
