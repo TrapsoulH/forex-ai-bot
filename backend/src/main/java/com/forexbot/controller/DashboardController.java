@@ -4,6 +4,7 @@ import com.forexbot.model.Trade;
 import com.forexbot.repository.SignalRepository;
 import com.forexbot.repository.TradeRepository;
 import com.forexbot.service.SignalPollerService;
+import com.forexbot.service.SseService;
 import com.forexbot.service.TradeService;
 import com.forexbot.service.WeeklyReviewService;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class DashboardController {
     private final SignalPollerService pollerService;
     private final TradeService tradeService;
     private final WeeklyReviewService weeklyReview;
+    private final SseService sseService;
     private final WebClient mt5Client;
 
     public DashboardController(
@@ -34,6 +36,7 @@ public class DashboardController {
             SignalPollerService pollerService,
             TradeService tradeService,
             WeeklyReviewService weeklyReview,
+            SseService sseService,
             @Qualifier("mt5WebClient") WebClient mt5Client
     ) {
         this.tradeRepository  = tradeRepository;
@@ -41,6 +44,7 @@ public class DashboardController {
         this.pollerService    = pollerService;
         this.tradeService     = tradeService;
         this.weeklyReview     = weeklyReview;
+        this.sseService       = sseService;
         this.mt5Client        = mt5Client;
     }
 
@@ -95,6 +99,7 @@ public class DashboardController {
         try {
             tradeService.closeTrade(id);
             log.info("Trade #{} closed successfully", id);
+            sseService.broadcastTrade(); // notify all dashboard clients
         } catch (Exception e) {
             log.error("Failed to close trade #{}: {}", id, e.getMessage());
         }

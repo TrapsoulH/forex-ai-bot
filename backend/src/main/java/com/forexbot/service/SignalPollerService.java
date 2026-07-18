@@ -22,6 +22,7 @@ public class SignalPollerService {
     private final SignalRepository signalRepository;
     private final TradeRepository tradeRepository;
     private final TradeService tradeService;
+    private final SseService sseService;
     private final WebClient signalClient;
 
     private volatile boolean botEnabled = false;
@@ -31,12 +32,14 @@ public class SignalPollerService {
             SignalRepository signalRepository,
             TradeRepository tradeRepository,
             TradeService tradeService,
+            SseService sseService,
             @Qualifier("signalWebClient") WebClient signalClient
     ) {
         this.botProperties    = botProperties;
         this.signalRepository = signalRepository;
         this.tradeRepository  = tradeRepository;
         this.tradeService     = tradeService;
+        this.sseService       = sseService;
         this.signalClient     = signalClient;
     }
 
@@ -94,6 +97,11 @@ public class SignalPollerService {
             tradeService.openTrade(symbol, dto.getSignal(), dto.getConfidence(), saved.getId());
             saved.setActedOn(true);
             signalRepository.save(saved);
+            // Push trade event so dashboard refreshes positions + stat cards
+            sseService.broadcastTrade();
         }
+
+        // Always push signal event so the signals table updates live
+        sseService.broadcastSignal();
     }
 }

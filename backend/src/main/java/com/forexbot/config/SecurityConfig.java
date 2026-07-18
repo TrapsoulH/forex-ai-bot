@@ -56,7 +56,11 @@ public class SecurityConfig {
             )
             .formLogin(form -> form
                 .loginPage("/login")
-                .defaultSuccessUrl("/dashboard", true)
+                .successHandler((req, res, auth) -> {
+                    boolean isAdmin = auth.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                    res.sendRedirect(isAdmin ? "/admin/users" : "/dashboard");
+                })
                 .failureUrl("/login?error")
                 .permitAll()
             )
@@ -74,7 +78,11 @@ public class SecurityConfig {
         if (isOAuth2Enabled()) {
             http.oauth2Login(oauth -> oauth
                 .loginPage("/login")
-                .defaultSuccessUrl("/dashboard", true)
+                .successHandler((req, res, auth) -> {
+                    boolean isAdmin = auth.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                    res.sendRedirect(isAdmin ? "/admin/users" : "/dashboard");
+                })
                 .userInfoEndpoint(u -> u.userService(oauth2UserService))
             );
             log.info("Security: Google OAuth2 enabled");
