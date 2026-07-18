@@ -44,11 +44,11 @@
       <span class="dot dot-red"></span> Bot Stopped
     </span>
 
-    <!-- User pill -->
-    <div class="nav-user-pill nav-desktop-only" style="margin-right:8px">
+    <!-- Account link -->
+    <a th:href="@{/account}" class="nav-user-pill nav-desktop-only" style="margin-right:8px;text-decoration:none">
       <i data-lucide="user" style="width:13px;height:13px"></i>
       <span sec:authentication="name">user</span>
-    </div>
+    </a>
 
     <!-- Logout -->
     <form th:action="@{/logout}" method="post" style="margin:0" class="nav-desktop-only">

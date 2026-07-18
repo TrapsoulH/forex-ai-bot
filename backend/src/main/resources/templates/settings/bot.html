@@ -31,7 +31,14 @@
 
     <div style="flex:1"></div>
 
-    <a th:href="@{/account}" class="btn-outline btn-sm nav-desktop-only" style="margin-right:8px;padding:6px 14px;border-radius:8px;font-size:.8rem;text-decoration:none;color:#94a3b8;border:1px solid rgba(255,255,255,.08)">
+    <span th:if="${botEnabled}" class="badge b-running nav-desktop-only" style="margin-right:8px">
+      <span class="dot dot-green"></span> Bot Running
+    </span>
+    <span th:unless="${botEnabled}" class="badge b-stopped nav-desktop-only" style="margin-right:8px">
+      <span class="dot dot-red"></span> Bot Stopped
+    </span>
+
+    <a th:href="@{/account}" class="nav-user-pill nav-desktop-only" style="margin-right:8px;text-decoration:none">
       <i data-lucide="user" style="width:13px;height:13px"></i>
       <span sec:authentication="name">user</span>
     </a>

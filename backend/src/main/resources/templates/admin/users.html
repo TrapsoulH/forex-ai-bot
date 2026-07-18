@@ -27,14 +27,21 @@
 
     <a th:href="@{/dashboard}" class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
     <a th:href="@{/admin/users}" class="nav-a active nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+    <a th:href="@{/settings/bot}" class="nav-a nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Settings</a>
 
     <div style="flex:1"></div>
 
-    <div class="nav-user-pill nav-desktop-only" style="margin-right:8px">
-      <i data-lucide="shield" style="width:13px;height:13px;color:#60a5fa"></i>
+    <span th:if="${botEnabled}" class="badge b-running nav-desktop-only" style="margin-right:8px">
+      <span class="dot dot-green"></span> Bot Running
+    </span>
+    <span th:unless="${botEnabled}" class="badge b-stopped nav-desktop-only" style="margin-right:8px">
+      <span class="dot dot-red"></span> Bot Stopped
+    </span>
+
+    <a th:href="@{/account}" class="nav-user-pill nav-desktop-only" style="margin-right:8px;text-decoration:none">
+      <i data-lucide="user" style="width:13px;height:13px"></i>
       <span sec:authentication="name">admin</span>
-      <span class="badge b-admin" style="font-size:.6rem;padding:1px 6px">Admin</span>
-    </div>
+    </a>
 
     <form th:action="@{/logout}" method="post" style="margin:0" class="nav-desktop-only">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
@@ -49,6 +56,8 @@
   <div class="mob-drawer" id="mob-drawer">
     <a th:href="@{/dashboard}" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
     <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
+    <a th:href="@{/settings/bot}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Settings</a>
+    <a th:href="@{/account}" class="mob-drawer-a"><i data-lucide="user"></i> Account</a>
     <hr class="mob-drawer-sep"/>
     <form th:action="@{/logout}" method="post" style="margin:0">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
