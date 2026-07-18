@@ -68,7 +68,7 @@ public class EmailService {
         ctx.setVariable("resetLink", link);
 
         sendHtml(toEmail,
-                 "Reset your Harvest Technologies password",
+                 "Reset your Blue Ocean Hub password",
                  "email/password-reset",
                  ctx);
     }
@@ -87,7 +87,7 @@ public class EmailService {
         ctx.setVariable("inviteLink", link);
 
         sendHtml(toEmail,
-                 "You've been invited to Harvest Technologies",
+                 "You've been invited to Blue Ocean Hub",
                  "email/invite",
                  ctx);
     }
@@ -110,7 +110,7 @@ public class EmailService {
 
         String direction = trade.getDirection().name();
         String subject   = direction + " " + trade.getSymbol()
-                         + " — Trade opened | Harvest Technologies";
+                         + " — Trade opened | Blue Ocean Hub";
 
         sendHtml(toEmail, subject, "email/trade-notification", ctx);
     }
@@ -160,7 +160,7 @@ public class EmailService {
         ctx.setVariable("dashboardUrl",    baseUrl + "/dashboard");
 
         String subject = outcome + " · " + trade.getDirection() + " " + trade.getSymbol()
-                + " closed (" + formattedProfit + " USD) | Harvest Technologies";
+                + " closed (" + formattedProfit + " USD) | Blue Ocean Hub";
 
         sendHtml(toEmail, subject, "email/trade-close-notification", ctx);
     }
@@ -181,7 +181,7 @@ public class EmailService {
         ctx.setVariable("dashboardUrl", baseUrl + "/dashboard");
 
         sendHtml(toEmail,
-                 "Your weekly trading review — Harvest Technologies",
+                 "Your weekly trading review — Blue Ocean Hub",
                  "email/weekly-review",
                  ctx);
     }
@@ -194,7 +194,7 @@ public class EmailService {
 
             MimeMessage msg = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(msg, false, "UTF-8");
-            helper.setFrom("Harvest Technologies <" + fromAddress + ">");
+            helper.setFrom("Blue Ocean Hub <" + fromAddress + ">");
             helper.setTo(to);
             helper.setSubject(subject);
             helper.setText(html, true); // true = HTML
