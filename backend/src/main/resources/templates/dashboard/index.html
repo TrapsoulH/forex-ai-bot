@@ -33,6 +33,7 @@
 
     <!-- Desktop nav links -->
     <a th:href="@{/dashboard}" class="nav-a active nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/analytics}" class="nav-a nav-desktop-only"><i data-lucide="line-chart"></i> Analytics</a>
     <a th:href="@{/admin/users}" class="nav-a nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
     <a th:href="@{/settings/bot}" class="nav-a nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Settings</a>
 
@@ -90,6 +91,7 @@
   <!-- Nav links -->
   <nav class="mob-nav">
     <a th:href="@{/dashboard}" class="mob-drawer-a active"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/analytics}" class="mob-drawer-a"><i data-lucide="line-chart"></i> Analytics</a>
     <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
     <a th:href="@{/settings/bot}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Bot Settings</a>
     <a th:href="@{/account}" class="mob-drawer-a"><i data-lucide="user"></i> Account</a>
@@ -131,20 +133,30 @@
         </span>
       </p>
     </div>
-    <div class="hdr-actions">
-      <!-- Bot toggle -->
-      <form th:unless="${botEnabled}" th:action="@{/bot/enable}" method="post">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <button type="submit" class="btn btn-green btn-md">
-          <i data-lucide="play"></i> Start Bot
-        </button>
-      </form>
-      <form th:if="${botEnabled}" th:action="@{/bot/disable}" method="post">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-        <button type="submit" class="btn btn-danger btn-md">
-          <i data-lucide="square"></i> Stop Bot
-        </button>
-      </form>
+    <div class="hdr-actions" style="flex-direction:column;align-items:flex-end;gap:6px">
+      <!-- Both forms always in DOM; JS toggles visibility based on live stats -->
+      <div id="start-bot-wrap" th:style="${botEnabled} ? 'display:none' : ''">
+        <form th:action="@{/bot/enable}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <button type="submit" class="btn btn-green btn-md">
+            <i data-lucide="play"></i> Start Bot
+          </button>
+        </form>
+      </div>
+      <div id="stop-bot-wrap" th:style="${!botEnabled} ? 'display:none' : ''">
+        <form th:action="@{/bot/disable}" method="post">
+          <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+          <button type="submit" class="btn btn-danger btn-md">
+            <i data-lucide="square"></i> Stop Bot
+          </button>
+        </form>
+      </div>
+      <!-- Market-closed hint — visible only when market is closed -->
+      <div id="market-closed-hint"
+           th:style="${marketOpen} ? 'display:none' : ''"
+           style="font-size:.7rem;color:#92400e;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:4px 10px;text-align:center;white-space:nowrap">
+        Market closed · auto-enables Sunday ~23:00 SAST
+      </div>
     </div>
   </div>
 
@@ -568,13 +580,27 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function updateStatCards(stats) {
+    // Open trades + P&L
     const openEl   = document.getElementById('stat-open-trades');
     const profitEl = document.getElementById('stat-total-profit');
     if (openEl) openEl.textContent = stats.openTradeCount ?? '—';
     if (profitEl && stats.totalProfit != null) {
       const p = parseFloat(stats.totalProfit);
-      profitEl.textContent  = (p >= 0 ? '+' : '') + p.toFixed(2);
-      profitEl.style.color  = p >= 0 ? '#34d399' : '#f87171';
+      profitEl.textContent = (p >= 0 ? '+' : '') + p.toFixed(2);
+      profitEl.style.color = p >= 0 ? '#34d399' : '#f87171';
+    }
+
+    // Bot enabled / disabled — swap button without page reload
+    const startWrap = document.getElementById('start-bot-wrap');
+    const stopWrap  = document.getElementById('stop-bot-wrap');
+    const hint      = document.getElementById('market-closed-hint');
+    if (startWrap && stopWrap) {
+      startWrap.style.display = stats.botEnabled ? 'none' : '';
+      stopWrap.style.display  = stats.botEnabled ? '' : 'none';
+    }
+    // Market-closed hint — show when market is not open
+    if (hint) {
+      hint.style.display = stats.marketOpen ? 'none' : '';
     }
   }
 
@@ -593,6 +619,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sse.addEventListener('signal', () => {
       fetch('/api/live/signals').then(r => r.json()).then(renderSignalsTable).catch(console.error);
+      // Also refresh stats so bot button stays in sync
+      fetch('/api/live/stats').then(r => r.json()).then(updateStatCards).catch(console.error);
     });
 
     sse.addEventListener('trade', () => {
@@ -603,6 +631,11 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPositionsTable(positions);
         updateStatCards(stats);
       }).catch(console.error);
+    });
+
+    // Status event: bot auto-enabled/disabled by MarketSchedulerService
+    sse.addEventListener('status', () => {
+      fetch('/api/live/stats').then(r => r.json()).then(updateStatCards).catch(console.error);
     });
 
     sse.onerror = () => {

@@ -26,6 +26,7 @@
     </a>
 
     <a th:href="@{/dashboard}" class="nav-a nav-desktop-only"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/analytics}" class="nav-a nav-desktop-only"><i data-lucide="line-chart"></i> Analytics</a>
     <a th:href="@{/admin/users}" class="nav-a nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
     <a th:href="@{/settings/bot}" class="nav-a nav-desktop-only" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Settings</a>
 
@@ -68,6 +69,7 @@
   </div>
   <nav class="mob-nav">
     <a th:href="@{/dashboard}" class="mob-drawer-a"><i data-lucide="layout-dashboard"></i> Dashboard</a>
+    <a th:href="@{/analytics}" class="mob-drawer-a"><i data-lucide="line-chart"></i> Analytics</a>
     <a th:href="@{/admin/users}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="users"></i> Users</a>
     <a th:href="@{/settings/bot}" class="mob-drawer-a" sec:authorize="hasRole('ADMIN')"><i data-lucide="settings"></i> Bot Settings</a>
     <a th:href="@{/account}" class="mob-drawer-a active"><i data-lucide="user"></i> Account</a>
