@@ -102,6 +102,14 @@ Track your progress through each phase. Check off items as you complete them.
 - [x] **CP-UI-06** Dashboard revamped — glass stat cards, topnav with mobile hamburger, proper badge system, Lucide icons
 - [ ] **CP-UI-07** Google OAuth2 credentials wired up (see Notes)
 - [ ] **CP-UI-08** feature/ui-polish branch merged to main via PR
+- [x] **CP-UI-09** Admin panel — user list, role changes, enable/disable, self-modification guard
+- [x] **CP-UI-10** Invite flow — admin sends email+role only, Brevo SMTP, user sets name+password via 72h link
+- [ ] **CP-UI-11** feature/admin-panel branch merged to main via PR
+- [x] **CP-UI-12** Public landing page — hero, features, how it works, signal preview, CTA
+- [x] **CP-UI-13** Route split — `/` public landing, `/dashboard` authenticated app
+- [x] **CP-UI-14** Custom error pages — branded 404, 403, 500
+- [x] **CP-UI-15** Branded HTML email templates — invite + password reset (Thymeleaf + MimeMessage)
+- [ ] **CP-UI-16** feature/public-pages branch merged to main via PR
 
 ---
 
