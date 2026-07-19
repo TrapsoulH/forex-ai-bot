@@ -54,6 +54,9 @@ public class UserService {
         User user = User.builder()
                 .username(form.getUsername())
                 .email(form.getEmail())
+                .emailVerified(false)
+                .emailVerificationToken(UUID.randomUUID().toString().replace("-", ""))
+                .emailVerificationExp(Instant.now().plus(java.time.Duration.ofHours(24)))
                 .fullName(form.getFullName())
                 .phone(form.getPhone() != null && !form.getPhone().isBlank() ? form.getPhone().trim() : null)
                 .passwordHash(passwordEncoder.encode(form.getPassword()))
@@ -63,6 +66,7 @@ public class UserService {
 
         User saved = userRepository.save(user);
         log.info("New user registered: {} ({})", saved.getUsername(), saved.getEmail());
+        emailService.sendEmailVerification(saved.getEmail(), saved.getEmailVerificationToken());
         return saved;
     }
 
@@ -152,7 +156,8 @@ public class UserService {
         User user = User.builder()
                 .username(username)
                 .email(email)
-                .fullName("")   // set by the invitee on the accept page
+                .emailVerified(true)   // admin provided the email — no verification needed
+                .fullName("")          // set by the invitee on the accept page
                 .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString())) // unusable placeholder
                 .role(role != null ? role : User.Role.USER)
                 .enabled(true)
@@ -270,6 +275,7 @@ public class UserService {
             User user = User.builder()
                     .username(username)
                     .email(email)
+                    .emailVerified(true)  // Google already verified the email
                     .fullName(fullName)
                     .passwordHash(passwordEncoder.encode(UUID.randomUUID().toString())) // unusable password
                     .role(User.Role.USER)
@@ -281,4 +287,69 @@ public class UserService {
             return saved;
         });
     }
+    // ── Email verification ────────────────────────────────────────────────────
+
+    @Transactional
+    public void verifyEmail(String token) {
+        User user = userRepository.findByEmailVerificationToken(token)
+                .orElseThrow(() -> new IllegalArgumentException("Invalid or expired verification link."));
+
+        if (user.getEmailVerificationExp() == null
+                || user.getEmailVerificationExp().isBefore(Instant.now())) {
+            throw new IllegalArgumentException("This verification link has expired. Please register again or request a new link.");
+        }
+
+        user.setEmailVerified(true);
+        user.setEmailVerificationToken(null);
+        user.setEmailVerificationExp(null);
+        userRepository.save(user);
+        log.info("Email verified for user: {}", user.getUsername());
+    }
+
+    @Transactional
+    public void resendVerification(String email) {
+        userRepository.findByEmail(email).ifPresent(user -> {
+            if (!user.isEmailVerified()) {
+                user.setEmailVerificationToken(UUID.randomUUID().toString().replace("-", ""));
+                user.setEmailVerificationExp(Instant.now().plus(java.time.Duration.ofHours(24)));
+                userRepository.save(user);
+                emailService.sendEmailVerification(user.getEmail(), user.getEmailVerificationToken());
+                log.info("Verification email resent for: {}", email);
+            }
+        });
+    }
+
+    // ── Login attempt tracking (persistent lockout) ───────────────────────────
+
+    private static final int      MAX_LOGIN_ATTEMPTS = 5;
+    private static final java.time.Duration LOCKOUT_DURATION = java.time.Duration.ofMinutes(15);
+
+    @Transactional
+    public void recordLoginSuccess(String username) {
+        userRepository.findByUsername(username).ifPresent(user -> {
+            user.setFailedLoginAttempts(0);
+            user.setLockedUntil(null);
+            user.setLastLoginAt(Instant.now());
+            userRepository.save(user);
+        });
+    }
+
+    @Transactional
+    public void recordLoginFailure(String username) {
+        userRepository.findByUsername(username).ifPresent(user -> {
+            // Don't pile on if already locked
+            if (user.getLockedUntil() != null && user.getLockedUntil().isAfter(Instant.now())) {
+                return;
+            }
+            int attempts = user.getFailedLoginAttempts() + 1;
+            user.setFailedLoginAttempts(attempts);
+            if (attempts >= MAX_LOGIN_ATTEMPTS) {
+                user.setLockedUntil(Instant.now().plus(LOCKOUT_DURATION));
+                log.warn("Account locked after {} failed attempts: {}", attempts, username);
+            }
+            userRepository.save(user);
+        });
+    }
+
+
 }

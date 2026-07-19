@@ -13,6 +13,8 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Slf4j
@@ -58,6 +60,7 @@ public class SecurityConfig {
                 .requestMatchers("/", "/features", "/pricing", "/about", "/error").permitAll()
                 .requestMatchers("/login", "/register", "/forgot-password", "/reset-password").permitAll()
                 .requestMatchers("/invite/**").permitAll()
+                .requestMatchers("/verify-email/**").permitAll()
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/settings/**").hasRole("ADMIN")
@@ -70,7 +73,16 @@ public class SecurityConfig {
                         .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
                     res.sendRedirect(isAdmin ? "/admin/users" : "/dashboard");
                 })
-                .failureUrl("/login?error")
+                .failureHandler((req, res, ex) -> {
+                    if (ex instanceof LockedException) {
+                        res.sendRedirect("/login?locked");
+                    } else if (ex instanceof DisabledException
+                            && "EMAIL_NOT_VERIFIED".equals(ex.getMessage())) {
+                        res.sendRedirect("/login?unverified");
+                    } else {
+                        res.sendRedirect("/login?error");
+                    }
+                })
                 .permitAll()
             )
             .logout(logout -> logout

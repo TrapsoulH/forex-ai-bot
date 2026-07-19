@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head><meta charset="UTF-8"/></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:40px 20px">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:16px;overflow:hidden;border:1px solid #1e3a5f">
+
+      <!-- Header -->
+      <tr>
+        <td style="background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);padding:36px 40px;text-align:center">
+          <img src="https://raw.githubusercontent.com/harvest-technologies/blue-ocean-hub/main/logo.svg"
+               alt="Blue Ocean Hub" width="72" height="72"
+               style="border-radius:14px;display:block;margin:0 auto 16px"/>
+          <h1 style="color:#f1f5f9;font-size:1.4rem;font-weight:700;margin:0">Verify your email address</h1>
+          <p style="color:#94a3b8;font-size:.88rem;margin:8px 0 0">One click and you're in.</p>
+        </td>
+      </tr>
+
+      <!-- Body -->
+      <tr>
+        <td style="padding:36px 40px">
+          <p style="color:#cbd5e1;font-size:.95rem;line-height:1.6;margin:0 0 24px">
+            Thanks for signing up to <strong style="color:#f1f5f9">Blue Ocean Hub</strong>. Click the button below
+            to verify your email address and activate your account.
+          </p>
+
+          <div style="text-align:center;margin:32px 0">
+            <a th:href="${verifyLink}" href="#"
+               style="display:inline-block;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;
+                      font-weight:700;font-size:1rem;text-decoration:none;padding:14px 36px;
+                      border-radius:10px;letter-spacing:.02em">
+              Verify email address
+            </a>
+          </div>
+
+          <p style="color:#64748b;font-size:.82rem;line-height:1.5;margin:0">
+            This link expires in <strong style="color:#94a3b8">24 hours</strong>. If you didn't create an account,
+            you can safely ignore this email.
+          </p>
+          <p style="color:#64748b;font-size:.78rem;margin:16px 0 0;word-break:break-all">
+            Or paste this URL into your browser:<br/>
+            <span th:text="${verifyLink}" style="color:#3b82f6"></span>
+          </p>
+        </td>
+      </tr>
+
+      <!-- Footer -->
+      <tr>
+        <td style="padding:20px 40px;border-top:1px solid #1e3a5f;text-align:center">
+          <p style="color:#334155;font-size:.75rem;margin:0">&copy; 2026 Blue Ocean Hub &nbsp;·&nbsp; Developed by Harvest Technologies</p>
+        </td>
+      </tr>
+    </table>
+  </td></tr>
+</table>
+</body>
+</html>

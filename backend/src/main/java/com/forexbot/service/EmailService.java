@@ -186,6 +186,26 @@ public class EmailService {
                  ctx);
     }
 
+    // ── Email verification ────────────────────────────────────────────────────
+
+    public void sendEmailVerification(String toEmail, String token) {
+        String link = baseUrl + "/verify-email?token=" + token;
+
+        if (!isMailConfigured()) {
+            logToConsole("EMAIL VERIFICATION", toEmail, link, "24 hours");
+            return;
+        }
+
+        Context ctx = new Context();
+        ctx.setVariable("verifyLink", link);
+
+        sendHtml(toEmail,
+                 "Verify your Blue Ocean Hub email address",
+                 "email/verify-email",
+                 ctx);
+    }
+
+
     // ── Internal helpers ──────────────────────────────────────────────────────
 
     private void sendHtml(String to, String subject, String templateName, Context ctx) {

@@ -3,8 +3,8 @@ package com.forexbot.service;
 import com.forexbot.model.User;
 import com.forexbot.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,21 +31,40 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                     return new UsernameNotFoundException("User not found: " + username);
                 });
 
+        // Admin-disabled accounts
         if (!user.isEnabled()) {
             log.warn("Login attempt for disabled account: {}", username);
-            throw new DisabledException("Account is disabled: " + username);
+            throw new DisabledException("Account is disabled.");
         }
 
-        // Update last login timestamp
-        user.setLastLoginAt(Instant.now());
-        userRepository.save(user);
+        // Email not yet verified
+        if (!user.isEmailVerified()) {
+            log.warn("Login attempt for unverified account: {}", username);
+            throw new DisabledException("EMAIL_NOT_VERIFIED");
+        }
 
-        log.info("User authenticated: {} (role={})", username, user.getRole());
+        // Auto-unlock if the lock window has expired
+        boolean isLocked = false;
+        if (user.getLockedUntil() != null) {
+            if (user.getLockedUntil().isAfter(Instant.now())) {
+                isLocked = true;
+                log.warn("Login attempt for locked account: {} (locked until {})", username, user.getLockedUntil());
+            } else {
+                // Window passed — clear lock so next login attempt starts fresh
+                user.setLockedUntil(null);
+                user.setFailedLoginAttempts(0);
+                userRepository.save(user);
+            }
+        }
 
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPasswordHash())
                 .authorities(List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())))
+                .disabled(false)
+                .accountExpired(false)
+                .credentialsExpired(false)
+                .accountLocked(isLocked)
                 .build();
     }
 }

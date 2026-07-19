@@ -1,5 +1,6 @@
 package com.forexbot.security;
 
+import com.forexbot.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -12,26 +13,35 @@ import org.springframework.stereotype.Component;
 public class AuthenticationEventListener {
 
     private final LoginAttemptService loginAttemptService;
+    private final UserService         userService;
     private final HttpServletRequest  request;
 
     public AuthenticationEventListener(LoginAttemptService loginAttemptService,
+                                       UserService userService,
                                        HttpServletRequest request) {
         this.loginAttemptService = loginAttemptService;
+        this.userService         = userService;
         this.request             = request;
     }
 
     @EventListener
     public void onSuccess(AuthenticationSuccessEvent event) {
-        String ip = getClientIp();
+        String ip       = getClientIp();
+        String username = event.getAuthentication().getName();
         loginAttemptService.loginSucceeded(ip);
-        log.debug("Login succeeded from {}", ip);
+        userService.recordLoginSuccess(username);
+        log.debug("Login succeeded: {} from {}", username, ip);
     }
 
     @EventListener
     public void onFailure(AbstractAuthenticationFailureEvent event) {
-        String ip = getClientIp();
+        String ip       = getClientIp();
+        String username = event.getAuthentication().getName();
         loginAttemptService.loginFailed(ip);
-        log.warn("Login failure from {} — cause: {}", ip, event.getException().getMessage());
+        if (username != null && !username.isBlank()) {
+            userService.recordLoginFailure(username);
+        }
+        log.warn("Login failure: {} from {} — {}", username, ip, event.getException().getMessage());
     }
 
     private String getClientIp() {

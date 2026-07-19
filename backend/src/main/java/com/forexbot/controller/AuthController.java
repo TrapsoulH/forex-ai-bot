@@ -64,9 +64,9 @@ public class AuthController {
             return "auth/register";
         }
         try {
-            userService.register(form);
-            redirectAttrs.addFlashAttribute("registered", true);
-            return "redirect:/login";
+            var saved = userService.register(form);
+            redirectAttrs.addFlashAttribute("pendingEmail", saved.getEmail());
+            return "redirect:/verify-email/pending";
         } catch (IllegalArgumentException e) {
             model.addAttribute("registrationError", e.getMessage());
             return "auth/register";
@@ -176,4 +176,48 @@ public class AuthController {
             return "auth/invite-accept";
         }
     }
+    // ── Email verification ────────────────────────────────────────────────────
+
+    @GetMapping("/verify-email/pending")
+    public String verifyEmailPending(@ModelAttribute("pendingEmail") String pendingEmail,
+                                     Model model) {
+        model.addAttribute("state", "pending");
+        model.addAttribute("email", pendingEmail);
+        return "auth/verify-email";
+    }
+
+    @GetMapping("/verify-email")
+    public String verifyEmail(@RequestParam(required = false) String token, Model model) {
+        if (token == null || token.isBlank()) {
+            model.addAttribute("state", "error");
+            model.addAttribute("errorMessage", "No verification token provided.");
+            return "auth/verify-email";
+        }
+        try {
+            userService.verifyEmail(token);
+            model.addAttribute("state", "success");
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("state", "error");
+            model.addAttribute("errorMessage", e.getMessage());
+        }
+        return "auth/verify-email";
+    }
+
+    @PostMapping("/verify-email/resend")
+    public String resendVerification(@RequestParam String email,
+                                     RedirectAttributes redirectAttrs) {
+        userService.resendVerification(email);
+        redirectAttrs.addFlashAttribute("resentEmail", email);
+        return "redirect:/verify-email/resent";
+    }
+
+    @GetMapping("/verify-email/resent")
+    public String verifyEmailResent(@ModelAttribute("resentEmail") String resentEmail,
+                                    Model model) {
+        model.addAttribute("state", "resent");
+        model.addAttribute("email", resentEmail);
+        return "auth/verify-email";
+    }
+
+
 }
