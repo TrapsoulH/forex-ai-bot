@@ -435,6 +435,14 @@ const doc = new Document({
       bullet('Risk limits verified — SL/TP and max open trades enforced'),
       bullet('GCP Cloud Monitoring / alerting configured'),
       bullet('Monthly ML model retrain process established'),
+      spacer(),
+      h2('Phase 7 — Expanded Instrument Coverage (Planned)'),
+      body('Extend signal generation and trade execution beyond the initial four forex pairs to include commodities and additional currency pairs.'),
+      bullet('Gold (XAUUSD) and Silver (XAGUSD) — requires retraining ML models on commodity price data and adjusting lot sizing / pip value calculations'),
+      bullet('Additional forex pairs — e.g. EURJPY, AUDUSD, GBPJPY'),
+      bullet('Per-instrument risk profiles — spread tolerance, SL/TP in points (not pips) for commodities'),
+      bullet('Symbol list configurable from Bot Settings UI — no code change required to add/remove instruments'),
+      body('Note: commodity instruments behave differently from forex pairs. Wider spreads, different volatility windows, and broker-specific symbol naming (e.g. GOLD vs XAUUSD) must be handled. Thorough paper testing required before live.'),
       divider(),
 
       // ── 11. DEV SETUP ──
