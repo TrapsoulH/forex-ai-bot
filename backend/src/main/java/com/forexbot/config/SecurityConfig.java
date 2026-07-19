@@ -2,6 +2,7 @@ package com.forexbot.config;
 
 import com.forexbot.service.OAuth2UserServiceImpl;
 import com.forexbot.service.UserDetailsServiceImpl;
+import jakarta.servlet.DispatcherType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -45,6 +46,9 @@ public class SecurityConfig {
         http
             .userDetailsService(userDetailsService)
             .authorizeHttpRequests(auth -> auth
+                // Spring Security 6 re-checks auth on ASYNC dispatcher (used by SseEmitter).
+                // Permit async re-dispatches globally — the original request was already authorised.
+                .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                 .requestMatchers("/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                 .requestMatchers("/", "/features", "/pricing", "/about", "/error").permitAll()
                 .requestMatchers("/login", "/register", "/forgot-password", "/reset-password").permitAll()
