@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Verify Email — Blue Ocean Hub</title>
+  <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
+  <link rel="stylesheet" th:href="@{/css/app.css}"/>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px">
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<div style="width:100%;max-width:480px;position:relative;z-index:1">
+
+  <div class="au" style="text-align:center;margin-bottom:32px">
+    <a href="/" style="display:inline-block;text-decoration:none">
+      <img src="/images/logo.svg" alt="Blue Ocean Hub" style="width:100px;height:100px;object-fit:contain"/>
+    </a>
+  </div>
+
+  <div class="auth-card au1">
+
+    <!-- ── Pending: check your inbox ── -->
+    <div th:if="${state == 'pending'}" style="text-align:center">
+      <div class="ic ic-md ic-blue" style="margin:0 auto 20px">
+        <i data-lucide="mail"></i>
+      </div>
+      <h1 style="font-size:1.2rem;font-weight:700;color:#f1f5f9;margin:0 0 12px">Check your inbox</h1>
+      <p style="color:#64748b;font-size:.9rem;line-height:1.6;margin:0 0 24px">
+        We've sent a verification link to
+        <strong style="color:#94a3b8" th:text="${email}">you@example.com</strong>.
+        Click the link to activate your account.
+      </p>
+      <p style="color:#475569;font-size:.8rem;margin:0 0 28px">
+        The link expires in 24 hours. Check your spam folder if you don't see it.
+      </p>
+      <form th:action="@{/verify-email/resend}" method="post" style="margin:0">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <input type="hidden" name="email" th:value="${email}"/>
+        <button type="submit" class="btn btn-md" style="background:rgba(59,130,246,.12);color:#60a5fa;border:1px solid rgba(59,130,246,.25);width:100%">
+          <i data-lucide="refresh-cw"></i> Resend verification email
+        </button>
+      </form>
+    </div>
+
+    <!-- ── Resent confirmation ── -->
+    <div th:if="${state == 'resent'}" style="text-align:center">
+      <div class="ic ic-md ic-blue" style="margin:0 auto 20px">
+        <i data-lucide="send"></i>
+      </div>
+      <h1 style="font-size:1.2rem;font-weight:700;color:#f1f5f9;margin:0 0 12px">Email resent</h1>
+      <p style="color:#64748b;font-size:.9rem;line-height:1.6;margin:0 0 24px">
+        A new verification link has been sent to
+        <strong style="color:#94a3b8" th:text="${email}">you@example.com</strong>.
+      </p>
+      <a th:href="@{/login}" class="btn btn-primary btn-md" style="display:inline-flex">
+        <i data-lucide="log-in"></i> Back to sign in
+      </a>
+    </div>
+
+    <!-- ── Success: email verified ── -->
+    <div th:if="${state == 'success'}" style="text-align:center">
+      <div class="ic ic-md" style="margin:0 auto 20px;background:rgba(34,197,94,.15);color:#4ade80">
+        <i data-lucide="circle-check-big"></i>
+      </div>
+      <h1 style="font-size:1.2rem;font-weight:700;color:#f1f5f9;margin:0 0 12px">Email verified!</h1>
+      <p style="color:#64748b;font-size:.9rem;line-height:1.6;margin:0 0 28px">
+        Your account is now active. Sign in to start trading.
+      </p>
+      <a th:href="@{/login}" class="btn btn-primary btn-md btn-block" style="display:flex">
+        <i data-lucide="log-in"></i> Sign in to Blue Ocean Hub
+      </a>
+    </div>
+
+    <!-- ── Error: invalid / expired token ── -->
+    <div th:if="${state == 'error'}" style="text-align:center">
+      <div class="ic ic-md" style="margin:0 auto 20px;background:rgba(239,68,68,.12);color:#f87171">
+        <i data-lucide="link-2-off"></i>
+      </div>
+      <h1 style="font-size:1.2rem;font-weight:700;color:#f1f5f9;margin:0 0 12px">Link invalid or expired</h1>
+      <p style="color:#64748b;font-size:.9rem;line-height:1.6;margin:0 0 24px" th:text="${errorMessage}">
+        This verification link is invalid or has expired.
+      </p>
+      <a th:href="@{/register}" class="btn btn-primary btn-md btn-block" style="display:flex">
+        <i data-lucide="user-plus"></i> Register again
+      </a>
+    </div>
+
+  </div>
+
+  <p style="text-align:center;margin-top:28px;font-size:.75rem;color:#1e3a5f">
+    &copy; 2026 Blue Ocean Hub &nbsp;·&nbsp; AI Forex Trading Platform
+  </p>
+</div>
+
+<script>document.addEventListener('DOMContentLoaded',()=>lucide.createIcons());</script>
+</body>
+</html>

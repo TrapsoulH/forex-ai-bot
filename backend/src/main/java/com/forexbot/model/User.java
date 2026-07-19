@@ -26,14 +26,24 @@ public class User {
     @Column(nullable = false, unique = true, length = 120)
     private String email;
 
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private boolean emailVerified = false;
+
+    @Column(name = "email_verification_token", length = 64)
+    private String emailVerificationToken;
+
+    @Column(name = "email_verification_exp")
+    private Instant emailVerificationExp;
+
     @Column(name = "full_name", length = 120)
     private String fullName;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
-
     @Column(name = "phone", length = 20)
     private String phone;
+
+    @Column(name = "password_hash", nullable = false)
+    private String passwordHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -50,4 +60,11 @@ public class User {
 
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
+
+    @Column(name = "failed_login_attempts", nullable = false)
+    @Builder.Default
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
 }

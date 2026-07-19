@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.math.BigDecimal;
 import java.time.Duration;
@@ -71,8 +73,12 @@ public class SignalPollerService {
             }
             try {
                 pollSymbol(symbol);
+            } catch (WebClientRequestException e) {
+                log.warn("Signal engine unreachable for {} — skipping cycle: {}", symbol, e.getMessage());
+            } catch (WebClientResponseException e) {
+                log.warn("Signal engine returned {} for {} — skipping cycle", e.getStatusCode().value(), symbol);
             } catch (Exception e) {
-                log.error("Error polling signal for {}: {}", symbol, e.getMessage());
+                log.error("Unexpected error polling signal for {}: {}", symbol, e.getMessage());
             }
         }
     }

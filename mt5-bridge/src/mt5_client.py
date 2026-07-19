@@ -1,5 +1,6 @@
 """
 MT5 client wrapper — handles connection lifecycle and login.
+Auto-reconnects when the terminal loses its broker connection.
 """
 import MetaTrader5 as mt5
 from loguru import logger
@@ -36,20 +37,43 @@ def disconnect() -> None:
 
 
 def is_connected() -> bool:
-    return mt5.terminal_info() is not None
+    """True only if the terminal is running AND account info is readable."""
+    return mt5.terminal_info() is not None and mt5.account_info() is not None
+
+
+def _try_reconnect() -> bool:
+    """
+    Attempt a single reconnect cycle.
+    Called automatically when account_info() returns None.
+    """
+    logger.warning("MT5 connection lost — attempting reconnect...")
+    mt5.shutdown()
+    ok = connect()
+    if ok:
+        logger.info("MT5 reconnected successfully.")
+    else:
+        logger.error("MT5 reconnect failed — will retry on next request.")
+    return ok
 
 
 def get_account_info() -> dict:
     info = mt5.account_info()
+
+    if info is None:
+        # Connection dropped — try once to reconnect before giving up
+        if _try_reconnect():
+            info = mt5.account_info()
+
     if info is None:
         return {}
+
     return {
-        "login": info.login,
-        "server": info.server,
-        "balance": info.balance,
-        "equity": info.equity,
-        "margin": info.margin,
+        "login":       info.login,
+        "server":      info.server,
+        "balance":     info.balance,
+        "equity":      info.equity,
+        "margin":      info.margin,
         "free_margin": info.margin_free,
-        "currency": info.currency,
-        "leverage": info.leverage,
+        "currency":    info.currency,
+        "leverage":    info.leverage,
     }

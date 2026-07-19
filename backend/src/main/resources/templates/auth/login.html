@@ -26,6 +26,20 @@
     <h1 style="font-size:1.2rem;font-weight:700;color:#f1f5f9;margin:0 0 24px">Welcome back</h1>
 
     <!-- Alerts -->
+    <div th:if="${param.blocked}" class="alert alert-error" style="margin-bottom:20px">
+      <i data-lucide="shield-off"></i>
+      <span>Too many failed attempts. Please wait 15 minutes before trying again.</span>
+    </div>
+    <div th:if="${param.locked}" class="alert alert-error" style="margin-bottom:20px">
+      <i data-lucide="lock"></i>
+      <span>Your account has been temporarily locked after too many failed attempts. Please try again in 15 minutes.</span>
+    </div>
+    <div th:if="${param.unverified}" class="alert" style="margin-bottom:20px;background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.25);display:flex;align-items:flex-start;gap:10px;padding:12px 16px;border-radius:10px">
+      <i data-lucide="mail-warning" style="flex-shrink:0;margin-top:1px"></i>
+      <span>Please verify your email address before signing in.
+        <a th:href="@{/verify-email/pending}" style="color:#fbbf24;font-weight:600;text-decoration:underline">Resend verification email</a>
+      </span>
+    </div>
     <div th:if="${param.error}" class="alert alert-error" style="margin-bottom:20px">
       <i data-lucide="alert-circle"></i>
       <span>Invalid username or password. Please try again.</span>
