@@ -9,6 +9,13 @@
   <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
   <link rel="stylesheet" th:href="@{/css/app.css}"/>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    .sym-grid{display:grid;grid-template-columns:1fr 1fr 1fr 72px;gap:12px;align-items:end}
+    @media(max-width:520px){
+      .sym-grid{grid-template-columns:1fr 1fr}
+      .sym-rr-col{display:none}
+    }
+  </style>
 </head>
 <body>
 
@@ -250,7 +257,7 @@
               </div>
 
               <!-- SL / TP / Volume / R:R grid -->
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 72px;gap:12px;align-items:end">
+              <div class="sym-grid">
                 <div>
                   <label class="label">SL (pips)</label>
                   <div class="input-wrap">
@@ -275,7 +282,7 @@
                            th:value="${sym.volume}" min="0.01" max="10" step="0.01" required/>
                   </div>
                 </div>
-                <div>
+                <div class="sym-rr-col">
                   <label class="label">R:R</label>
                   <div class="sym-rr"
                        style="height:42px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:.82rem;font-weight:700;color:#38bdf8;font-family:monospace"
@@ -402,9 +409,8 @@ document.addEventListener('DOMContentLoaded', () => {
         thumbEl.style.transform = 'translateX(0)';
       }
     }
+    updateSymToggle(); // sync visual to server-rendered state on load
     cb.addEventListener('change', updateSymToggle);
-    // trigger once so initial state always matches the Thymeleaf-rendered style
-    trackEl.addEventListener('click', () => { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); });
   });
 
   // Live R:R ratio update as SL/TP inputs change
