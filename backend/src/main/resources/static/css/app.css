@@ -158,14 +158,14 @@ tbody td{padding:13px 16px;font-size:.875rem;color:#cbd5e1;vertical-align:middle
 
 /* ── Mobile drawer panel (slides in from right) ── */
 .mob-drawer{
-  position:fixed;top:0;right:0;width:280px;height:100vh;
+  position:fixed;top:0;right:0;width:280px;height:100vh;height:100dvh;
   background:rgba(5,11,24,.98);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
   border-left:1px solid rgba(59,130,246,.14);
   z-index:299;
   display:flex;flex-direction:column;
   transform:translateX(100%);
   transition:transform .3s cubic-bezier(.4,0,.2,1);
-  visibility:hidden;overflow-y:auto
+  visibility:hidden;overflow:hidden
 }
 .mob-drawer.open{transform:translateX(0);visibility:visible}
 
@@ -174,7 +174,7 @@ tbody td{padding:13px 16px;font-size:.875rem;color:#cbd5e1;vertical-align:middle
 .mob-close:hover{background:rgba(239,68,68,.1);color:#f87171}
 .mob-close i,.mob-close svg{width:15px;height:15px}
 
-.mob-nav{flex:1;display:flex;flex-direction:column;gap:3px;padding:12px 10px}
+.mob-nav{flex:1;display:flex;flex-direction:column;gap:3px;padding:12px 10px;overflow-y:auto;-webkit-overflow-scrolling:touch}
 .mob-drawer-a{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;color:#64748b;font-size:.875rem;font-weight:500;text-decoration:none;transition:color .18s,background .18s;border:none;background:none;cursor:pointer;font-family:inherit;width:100%;text-align:left}
 .mob-drawer-a i,.mob-drawer-a svg{width:16px;height:16px;flex-shrink:0}
 .mob-drawer-a:hover{color:#e2e8f0;background:rgba(59,130,246,.08)}
@@ -187,7 +187,7 @@ tbody td{padding:13px 16px;font-size:.875rem;color:#cbd5e1;vertical-align:middle
 .mob-drawer-sep{border:none;border-top:1px solid rgba(59,130,246,.1);margin:4px 0}
 
 /* ── Data refresh toast ── */
-.refresh-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(4,10,24,.96);border:1px solid rgba(59,130,246,.28);border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:14px;z-index:250;min-width:260px;max-width:340px;box-shadow:0 8px 32px rgba(0,0,0,.45);animation:fadeUp .3s ease both;font-size:.82rem;color:#94a3b8;backdrop-filter:blur(12px);white-space:nowrap}
+.refresh-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(4,10,24,.96);border:1px solid rgba(59,130,246,.28);border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:10px;z-index:250;width:max-content;max-width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,.45);animation:fadeUp .3s ease both;font-size:.82rem;color:#94a3b8;backdrop-filter:blur(12px);white-space:normal;flex-wrap:wrap}
 .refresh-toast-btn{padding:5px 12px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:600;transition:all .18s}
 .refresh-toast-btn.primary{background:rgba(59,130,246,.18);color:#60a5fa;border:1px solid rgba(59,130,246,.28)}
 .refresh-toast-btn.primary:hover{background:rgba(59,130,246,.28)}

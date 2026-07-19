@@ -351,6 +351,15 @@ const doc = new Document({
       body('After a successful cloud deployment and satisfactory paper trading results, the platform opens for live trading. Real money, real accounts, real returns.'),
       spacer(),
       callout('Live trading will only be enabled once consistent profitability is demonstrated over at least 100 paper trades. Capital preservation comes first.', GREEN, 'F0FDF4'),
+      spacer(),
+      h2('📈  Phase 7 — Gold, Silver & More Instruments (Planned)'),
+      body('Once the platform is stable in live trading, the bot will expand beyond the initial four forex pairs to include commodities and additional currency pairs.'),
+      spacer(),
+      bullet('Gold (XAUUSD) and Silver (XAGUSD) — the most requested addition'),
+      bullet('Additional forex pairs such as EURJPY, AUDUSD, GBPJPY'),
+      bullet('Each new instrument gets its own ML model, risk profile, and paper testing period before going live'),
+      spacer(),
+      callout('Adding commodities like gold requires extra care — lot sizes, pip values, and spread behaviour are different from standard forex pairs. We will paper-trade each new instrument for a minimum of 30 days before enabling live trading.', AMBER, 'FFFBEB'),
       divider(),
 
       // ── 11. FAQ ──

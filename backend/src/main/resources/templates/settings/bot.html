@@ -9,6 +9,13 @@
   <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
   <link rel="stylesheet" th:href="@{/css/app.css}"/>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    .sym-grid{display:grid;grid-template-columns:1fr 1fr 1fr 72px;gap:12px;align-items:end}
+    @media(max-width:520px){
+      .sym-grid{grid-template-columns:1fr 1fr}
+      .sym-rr-col{display:none}
+    }
+  </style>
 </head>
 <body>
 
@@ -20,7 +27,7 @@
 <nav class="topnav" style="position:relative">
   <div class="topnav-inner">
     <a class="topnav-logo" th:href="@{/dashboard}">
-      <div class="logo-box"><i data-lucide="zap"></i></div>
+      <img src="/images/logo.svg" alt="Blue Ocean Hub" style="width:36px;height:36px;border-radius:8px;flex-shrink:0"/>
       <span class="logo-name">Blue <span class="gradient-text">Ocean Hub</span></span>
       <span class="logo-tag">AI Forex</span>
     </a>
@@ -60,9 +67,7 @@
 <div class="mob-drawer" id="mob-drawer" aria-label="Navigation menu">
   <div class="mob-drawer-header">
     <div style="display:flex;align-items:center;gap:9px">
-      <div class="logo-box" style="width:28px;height:28px;border-radius:8px">
-        <i data-lucide="zap" style="width:13px;height:13px;color:#fff"></i>
-      </div>
+      <img src="/images/logo.svg" alt="Blue Ocean Hub" style="width:32px;height:32px;border-radius:7px;flex-shrink:0"/>
       <span style="font-size:.85rem;font-weight:700;color:#f1f5f9">Blue <span class="gradient-text">Ocean Hub</span></span>
     </div>
     <button class="mob-close" id="mob-close" aria-label="Close menu"><i data-lucide="x"></i></button>
@@ -250,7 +255,7 @@
               </div>
 
               <!-- SL / TP / Volume / R:R grid -->
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 72px;gap:12px;align-items:end">
+              <div class="sym-grid">
                 <div>
                   <label class="label">SL (pips)</label>
                   <div class="input-wrap">
@@ -275,7 +280,7 @@
                            th:value="${sym.volume}" min="0.01" max="10" step="0.01" required/>
                   </div>
                 </div>
-                <div>
+                <div class="sym-rr-col">
                   <label class="label">R:R</label>
                   <div class="sym-rr"
                        style="height:42px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;font-size:.82rem;font-weight:700;color:#38bdf8;font-family:monospace"
@@ -402,9 +407,8 @@ document.addEventListener('DOMContentLoaded', () => {
         thumbEl.style.transform = 'translateX(0)';
       }
     }
+    updateSymToggle(); // sync visual to server-rendered state on load
     cb.addEventListener('change', updateSymToggle);
-    // trigger once so initial state always matches the Thymeleaf-rendered style
-    trackEl.addEventListener('click', () => { cb.checked = !cb.checked; cb.dispatchEvent(new Event('change')); });
   });
 
   // Live R:R ratio update as SL/TP inputs change

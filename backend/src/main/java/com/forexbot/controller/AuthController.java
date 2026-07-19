@@ -63,10 +63,6 @@ public class AuthController {
         if (result.hasErrors()) {
             return "auth/register";
         }
-        if (!form.getPassword().equals(form.getConfirmPassword())) {
-            model.addAttribute("registrationError", "Passwords do not match");
-            return "auth/register";
-        }
         try {
             userService.register(form);
             redirectAttrs.addFlashAttribute("registered", true);

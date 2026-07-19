@@ -1,10 +1,11 @@
 package com.forexbot.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import com.forexbot.validation.PasswordsMatch;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 @Data
+@PasswordsMatch(password = "password", confirmPassword = "confirmPassword")
 public class AcceptInviteForm {
 
     private String token;
@@ -15,6 +16,10 @@ public class AcceptInviteForm {
 
     @NotBlank(message = "Password is required")
     @Size(min = 8, message = "Password must be at least 8 characters")
+    @Pattern(
+        regexp = "^(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z0-9]).{8,}$",
+        message = "Password must contain at least one uppercase letter, one number, and one special character"
+    )
     private String password;
 
     @NotBlank(message = "Please confirm your password")
