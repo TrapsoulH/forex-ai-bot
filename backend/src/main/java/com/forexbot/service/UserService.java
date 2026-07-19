@@ -44,9 +44,6 @@ public class UserService {
 
     @Transactional
     public User register(RegisterForm form) {
-        if (!form.getPassword().equals(form.getConfirmPassword())) {
-            throw new IllegalArgumentException("Passwords do not match");
-        }
         if (userRepository.existsByUsername(form.getUsername())) {
             throw new IllegalArgumentException("Username is already taken");
         }
@@ -58,6 +55,7 @@ public class UserService {
                 .username(form.getUsername())
                 .email(form.getEmail())
                 .fullName(form.getFullName())
+                .phone(form.getPhone() != null && !form.getPhone().isBlank() ? form.getPhone().trim() : null)
                 .passwordHash(passwordEncoder.encode(form.getPassword()))
                 .role(User.Role.USER)
                 .enabled(true)
@@ -238,6 +236,7 @@ public class UserService {
     public void updateProfile(String username, UpdateProfileForm form) {
         User user = findByUsername(username);
         user.setFullName(form.getFullName().trim());
+        user.setPhone(form.getPhone() != null && !form.getPhone().isBlank() ? form.getPhone().trim() : null);
         userRepository.save(user);
         log.info("Profile updated for {}", username);
     }

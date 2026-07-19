@@ -163,8 +163,17 @@
         </div>
         <p class="field-error" th:if="${#fields.hasErrors('fullName')}" th:errors="*{fullName}"></p>
       </div>
+      <div style="margin-bottom:16px">
+        <label class="label">Phone number <span style="color:#475569;font-weight:400">(optional)</span></label>
+        <div class="input-wrap">
+          <i data-lucide="phone" class="i-pfx"></i>
+          <input type="tel" th:field="*{phone}" class="input" placeholder="+27821234567" autocomplete="tel"/>
+        </div>
+        <p style="font-size:.74rem;color:#334155;margin-top:4px">E.164 format — include country code, e.g. +27821234567</p>
+        <p class="field-error" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></p>
+      </div>
       <button type="submit" class="btn btn-primary btn-md">
-        <i data-lucide="save"></i> Save name
+        <i data-lucide="save"></i> Save profile
       </button>
     </form>
   </div>

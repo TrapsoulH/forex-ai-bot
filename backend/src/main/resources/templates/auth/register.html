@@ -52,13 +52,23 @@
         </div>
       </div>
 
-      <div style="margin-bottom:14px">
-        <label class="label">Email address</label>
-        <div class="input-wrap">
-          <i data-lucide="mail" class="i-pfx"></i>
-          <input type="email" th:field="*{email}" class="input" placeholder="you@example.com" required/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+        <div>
+          <label class="label">Email address</label>
+          <div class="input-wrap">
+            <i data-lucide="mail" class="i-pfx"></i>
+            <input type="email" th:field="*{email}" class="input" placeholder="you@example.com" required/>
+          </div>
+          <p class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
         </div>
-        <p class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></p>
+        <div>
+          <label class="label">Phone <span style="color:#475569;font-weight:400">(optional)</span></label>
+          <div class="input-wrap">
+            <i data-lucide="phone" class="i-pfx"></i>
+            <input type="tel" th:field="*{phone}" class="input" placeholder="+27821234567"/>
+          </div>
+          <p class="field-error" th:if="${#fields.hasErrors('phone')}" th:errors="*{phone}"></p>
+        </div>
       </div>
 
       <div style="margin-bottom:14px">

@@ -30,6 +30,7 @@ public class AccountController {
         User user = userService.findByUsername(principal.getUsername());
         UpdateProfileForm profileForm = new UpdateProfileForm();
         profileForm.setFullName(user.getFullName() != null ? user.getFullName() : "");
+        profileForm.setPhone(user.getPhone() != null ? user.getPhone() : "");
         model.addAttribute("user", user);
         model.addAttribute("profileForm", profileForm);
         model.addAttribute("passwordForm", new ChangePasswordForm());
@@ -51,7 +52,7 @@ public class AccountController {
         }
         try {
             userService.updateProfile(principal.getUsername(), form);
-            redirectAttrs.addFlashAttribute("success", "Your name has been updated.");
+            redirectAttrs.addFlashAttribute("success", "Profile updated successfully.");
         } catch (IllegalArgumentException e) {
             redirectAttrs.addFlashAttribute("error", e.getMessage());
         }
@@ -83,6 +84,7 @@ public class AccountController {
     private UpdateProfileForm buildProfileForm(User user) {
         UpdateProfileForm f = new UpdateProfileForm();
         f.setFullName(user.getFullName() != null ? user.getFullName() : "");
+        f.setPhone(user.getPhone() != null ? user.getPhone() : "");
         return f;
     }
 }
