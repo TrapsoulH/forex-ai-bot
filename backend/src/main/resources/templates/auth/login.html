@@ -26,6 +26,10 @@
     <h1 style="font-size:1.2rem;font-weight:700;color:#f1f5f9;margin:0 0 24px">Welcome back</h1>
 
     <!-- Alerts -->
+    <div th:if="${param.blocked}" class="alert alert-error" style="margin-bottom:20px">
+      <i data-lucide="shield-off"></i>
+      <span>Too many failed attempts. Please wait 15 minutes before trying again.</span>
+    </div>
     <div th:if="${param.error}" class="alert alert-error" style="margin-bottom:20px">
       <i data-lucide="alert-circle"></i>
       <span>Invalid username or password. Please try again.</span>

@@ -13,7 +13,7 @@ public class UpdateProfileForm {
     private String fullName;
 
     @Pattern(
-        regexp = "^(\\+[1-9]\\d{6,14})?$",
+        regexp = "^(\\+27[0-9]{9})?$",
         message = "Phone number must be in E.164 format, e.g. +27821234567"
     )
     private String phone;

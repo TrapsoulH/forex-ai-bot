@@ -1,5 +1,6 @@
 package com.forexbot.config;
 
+import com.forexbot.security.LoginRateLimitFilter;
 import com.forexbot.service.OAuth2UserServiceImpl;
 import com.forexbot.service.UserDetailsServiceImpl;
 import jakarta.servlet.DispatcherType;
@@ -12,6 +13,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Slf4j
 @Configuration
@@ -20,14 +22,17 @@ public class SecurityConfig {
 
     private final UserDetailsServiceImpl userDetailsService;
     private final OAuth2UserServiceImpl  oauth2UserService;
+    private final LoginRateLimitFilter   loginRateLimitFilter;
 
     @Value("${spring.security.oauth2.client.registration.google.client-id:disabled}")
     private String googleClientId;
 
     public SecurityConfig(UserDetailsServiceImpl userDetailsService,
-                          OAuth2UserServiceImpl oauth2UserService) {
-        this.userDetailsService = userDetailsService;
-        this.oauth2UserService  = oauth2UserService;
+                          OAuth2UserServiceImpl oauth2UserService,
+                          LoginRateLimitFilter loginRateLimitFilter) {
+        this.userDetailsService   = userDetailsService;
+        this.oauth2UserService    = oauth2UserService;
+        this.loginRateLimitFilter = loginRateLimitFilter;
     }
 
     private boolean isOAuth2Enabled() {
@@ -93,6 +98,8 @@ public class SecurityConfig {
         } else {
             log.info("Security: Google OAuth2 disabled (GOOGLE_CLIENT_ID not set) — username/password only");
         }
+
+        http.addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
