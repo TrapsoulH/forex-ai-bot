@@ -14,6 +14,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientRequestException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Duration;
 import java.util.Map;
@@ -60,7 +61,11 @@ public class DashboardController {
                     .block();
             log.debug("MT5 account info fetched: login={}", accountInfo != null ? accountInfo.get("login") : "null");
         } catch (WebClientRequestException e) {
+            // Bridge process not running / connection refused
             log.warn("MT5 bridge unreachable — dashboard will show without account info: {}", e.getMessage());
+        } catch (WebClientResponseException e) {
+            // Bridge is running but MT5 terminal is unavailable (503 = disconnected from broker)
+            log.warn("MT5 bridge returned {} — terminal may be disconnected: {}", e.getStatusCode().value(), e.getMessage());
         } catch (Exception e) {
             log.error("Unexpected error fetching MT5 account info", e);
         }
