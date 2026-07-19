@@ -6,6 +6,10 @@ spring:
   application:
     name: forex-ai-bot-backend
 
+  threads:
+    virtual:
+      enabled: true   # Java 21 virtual threads — better I/O concurrency for SSE + DB calls
+
   datasource:
     url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:forexbot}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&createDatabaseIfNotExist=true
     username: ${DB_USER}      # required — no default, must be in .env or env var
