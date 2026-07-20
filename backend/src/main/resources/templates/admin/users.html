@@ -196,8 +196,13 @@
   <!-- ── Users table ── -->
   <div class="au3">
     <div class="section-title"><i data-lucide="users"></i> All Users</div>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+      <input id="users-search" type="search" placeholder="Search users…"
+             style="background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:8px;padding:6px 12px;font-size:.8rem;width:220px;outline:none"
+             oninput="filterTable('users-table',this.value)"/>
+    </div>
     <div class="table-wrap">
-      <table>
+      <table id="users-table">
         <thead>
           <tr>
             <th>User</th>
@@ -309,6 +314,15 @@
 </footer>
 
 <script>
+  function filterTable(tableId, query) {
+    const q = query.trim().toLowerCase();
+    const rows = document.querySelectorAll('#' + tableId + ' tbody tr');
+    rows.forEach(row => {
+      if (row.querySelector('.empty-state')) { row.style.display = ''; return; }
+      row.style.display = !q || row.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  }
+
 document.addEventListener('DOMContentLoaded', () => {
   lucide.createIcons();
 

@@ -1,10 +1,13 @@
 """
 MT5 client wrapper — handles connection lifecycle and login.
-Auto-reconnects when the terminal loses its broker connection.
+Auto-reconnects when the terminal loses its broker connection or the IPC pipe breaks.
 """
 import MetaTrader5 as mt5
 from loguru import logger
 from config import settings
+
+# MT5 error code for broken IPC pipe between Python library and terminal
+IPC_SEND_FAILED = -10001
 
 
 def connect() -> bool:
@@ -41,13 +44,17 @@ def is_connected() -> bool:
     return mt5.terminal_info() is not None and mt5.account_info() is not None
 
 
-def _try_reconnect() -> bool:
+def try_reconnect() -> bool:
     """
-    Attempt a single reconnect cycle.
-    Called automatically when account_info() returns None.
+    Attempt a single reconnect cycle (shutdown → initialize → login).
+    Called automatically on IPC errors or missing account info.
+    Returns True if reconnect succeeded.
     """
     logger.warning("MT5 connection lost — attempting reconnect...")
-    mt5.shutdown()
+    try:
+        mt5.shutdown()
+    except Exception:
+        pass
     ok = connect()
     if ok:
         logger.info("MT5 reconnected successfully.")
@@ -60,8 +67,7 @@ def get_account_info() -> dict:
     info = mt5.account_info()
 
     if info is None:
-        # Connection dropped — try once to reconnect before giving up
-        if _try_reconnect():
+        if try_reconnect():
             info = mt5.account_info()
 
     if info is None:
