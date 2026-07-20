@@ -57,6 +57,7 @@ public class LiveDataController {
                     m.put("symbol",          s.getSymbol());
                     m.put("direction",       s.getDirection());
                     m.put("confidence",      pct(s.getConfidence()));
+                    m.put("mlConfidence",    pct(s.getMlConfidence()));
                     m.put("technicalSignal", s.getTechnicalSignal());
                     m.put("mlSignal",        s.getMlSignal());
                     m.put("actedOn",         s.isActedOn());

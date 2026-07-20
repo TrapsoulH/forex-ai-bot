@@ -4,6 +4,7 @@ Signal Engine — FastAPI service that computes hybrid trading signals.
 import sys
 import asyncio
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 import httpx
@@ -17,6 +18,12 @@ from config import settings
 
 logger.remove()
 logger.add(sys.stdout, format="{time:HH:mm:ss} | {level} | {message}", level="DEBUG")
+
+# ── Candle cache ──────────────────────────────────────────────────────────────
+# H1 candles update once per hour. Caching for 55 minutes avoids redundant
+# HTTP calls to mt5-bridge on every scan cycle (up to 60× reduction in traffic).
+_candle_cache: dict[str, tuple[pd.DataFrame, datetime]] = {}
+_CACHE_TTL = timedelta(minutes=55)
 
 # One strategy instance per symbol
 _strategies: dict[str, HybridStrategy] = {}
@@ -40,6 +47,22 @@ app = FastAPI(
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 async def _fetch_candles(symbol: str) -> pd.DataFrame:
+    """
+    Fetch OHLCV candles with in-memory TTL cache.
+    H1 candles only update every 60 minutes, so 55-min caching is safe
+    and eliminates redundant HTTP round-trips on every scan cycle.
+    """
+    cache_key = f"{symbol}_{settings.timeframe}"
+    now = datetime.now(timezone.utc)
+
+    if cache_key in _candle_cache:
+        df_cached, cached_at = _candle_cache[cache_key]
+        age = now - cached_at
+        if age < _CACHE_TTL:
+            logger.debug(f"[{symbol}] Candle cache hit (age {int(age.total_seconds())}s)")
+            return df_cached
+
+    logger.debug(f"[{symbol}] Fetching fresh candles from MT5 bridge")
     url = f"{settings.mt5_bridge_url}/candles/{symbol}"
     params = {"timeframe": settings.timeframe, "count": settings.candle_count}
     async with httpx.AsyncClient(timeout=15.0) as client:
@@ -48,6 +71,7 @@ async def _fetch_candles(symbol: str) -> pd.DataFrame:
     data = resp.json()
     df = pd.DataFrame(data)
     df["time"] = pd.to_datetime(df["time"])
+    _candle_cache[cache_key] = (df, now)
     return df
 
 
@@ -169,10 +193,10 @@ async def debug(symbol: str):
         "conditions": {
             "price_above_ema200": bool(last["close"] > last["ema_200"]),
             "ema_fast_above_slow": bool(last[f"ema_{settings.ema_fast}"] > last[f"ema_{settings.ema_slow}"]),
-            "rsi_buy_zone":  bool(settings.rsi_oversold < last["rsi"] < 60),
-            "rsi_sell_zone": bool(40 < last["rsi"] < settings.rsi_overbought),
-            "macd_bullish":  bool(last["macd_hist"] > 0),
-            "macd_bearish":  bool(last["macd_hist"] < 0),
+            "rsi_buy_zone":  bool(settings.rsi_oversold < last["rsi"] < 65),
+            "rsi_sell_zone": bool(35 < last["rsi"] < settings.rsi_overbought),
+            "macd_bullish":  bool(last["macd_hist"] > 0),   # sign only (slope dropped)
+            "macd_bearish":  bool(last["macd_hist"] < 0),   # sign only (slope dropped)
         },
     }
 
