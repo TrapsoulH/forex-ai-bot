@@ -140,6 +140,8 @@ Schema is managed exclusively by Flyway — never by Hibernate DDL auto.
 | `V2__users.sql` | Users table — email, role, enabled, OAuth2 support |
 | `V3__user_fullname_and_password_reset.sql` | Full name, invite token, password reset token |
 | `V4__symbol_settings.sql` | Per-symbol SL/TP/volume/enabled — seeds 4 default pairs |
+| `V5__add_phone_to_users.sql` | Phone field on users (SA format `+27XXXXXXXXX`) |
+| `V6__email_verification_and_account_lockout.sql` | Email verified flag + verification token + persistent login lockout |
 
 > Never edit an existing migration after it has been applied. Always create a new versioned file.
 
@@ -157,6 +159,13 @@ Schema is managed exclusively by Flyway — never by Hibernate DDL auto.
 - Market-hours auto-detection — nav badge shows Bot Running / Market Closed / Bot Stopped
 - Paper trading mode — toggle in Bot Settings (no real orders placed)
 
+### Signal Strategy (Hybrid Two-Gate)
+- **Technical gate** — EMA trend alignment + RSI (30–65 BUY / 35–70 SELL) + MACD sign confirmation; all three must pass
+- **AI gate** — XGBoost model must predict the same direction with ≥ 55% confidence
+- Gate optimisation: AI model is skipped entirely if the technical gate returns HOLD (saves CPU)
+- H1 candle cache (55 min TTL) eliminates redundant MT5 bridge calls on every scan cycle
+- Debug endpoint: `GET http://localhost:8002/debug/{symbol}` — shows all indicator values and gate decisions
+
 ### Risk Management
 - Global defaults: SL pips, TP pips, lot size, max open trades
 - Per-symbol overrides: individual SL/TP/volume/enabled per pair (EURUSD, GBPUSD, USDJPY, AUDUSD)
@@ -167,11 +176,15 @@ Schema is managed exclusively by Flyway — never by Hibernate DDL auto.
 - Weekly review email → all users → every Friday 18:00 UTC (signals, P&L, best/worst pair)
 - Invite + password reset emails with branded templates
 
-### Auth
+### Auth & Security
 - Username/password login with BCrypt
 - Google OAuth2 (optional — configure `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`)
 - Role-aware redirect on login: ADMIN → `/admin/users`, USER → `/dashboard`
 - Admin panel: manage users, change roles, enable/disable accounts
+- Email verification on registration — 24h token, resend flow
+- Login rate limiting — IP blocked after 5 failed attempts for 15 minutes
+- Persistent account lockout — DB-backed, auto-clears on expiry
+- Input validation — MX email domain check, SA phone format, strong password, cross-field match
 
 ---
 
@@ -258,7 +271,7 @@ forex-ai-bot/
             │   ├── V3__user_fullname_and_password_reset.sql
             │   └── V4__symbol_settings.sql
             ├── static/
-            │   ├── css/app.css                # Harvest Technologies design system
+            │   ├── css/app.css                # Blue Ocean Hub design system
             │   └── favicon.svg
             └── templates/
                 ├── dashboard/index.html       # Main trading dashboard (SSE live)
