@@ -112,29 +112,69 @@ Track your progress through each phase. Check off items as you complete them.
 - [x] **CP-UI-34** Auto-dismiss flash alerts — fade out after 4 seconds
 - [x] **CP-UI-35** Account settings page — update name, change password
 
-### Branch hygiene (merge before Sunday test)
-- [ ] **CP-UI-36** `feature/ui-polish` merged to `main` via PR
-- [ ] **CP-UI-37** `feature/admin-panel` merged to `main` via PR
-- [ ] **CP-UI-38** `feature/public-pages` merged to `main` via PR
-- [ ] **CP-UI-39** `feature/enhancements` merged to `main` via PR
-- [ ] **CP-UI-40** `feature/ux-improvements` merged to `main` via PR
+### Branch hygiene
+- [x] **CP-UI-36** `feature/ui-polish` merged to `main` via PR
+- [x] **CP-UI-37** `feature/admin-panel` merged to `main` via PR
+- [x] **CP-UI-38** `feature/public-pages` merged to `main` via PR
+- [x] **CP-UI-39** `feature/enhancements` merged to `main` via PR
+- [x] **CP-UI-40** `feature/ux-improvements` merged to `main` via PR
+- [x] **CP-UI-41** `feature/security-hardening` merged to `main` via PR
+- [x] **CP-UI-42** `feature/signal-fixes` merged to `main` via PR
 
 ---
 
-## Phase 4c — Pre-Sunday Test Checklist
+## Phase 4c — Security Hardening
+
+**Goal:** Brute-force protection, email verification, persistent account lockout, and input validation.
+
+- [x] **CP-SEC-01** Login rate limiting — `LoginRateLimitFilter` blocks IPs after 5 failed attempts for 15 minutes
+- [x] **CP-SEC-02** Email verification on registration — UUID token, 24h expiry, resend flow
+- [x] **CP-SEC-03** Persistent account lockout — `failed_login_attempts` + `locked_until` in DB (V6 migration)
+- [x] **CP-SEC-04** `@ValidEmailDomain` — DNS MX lookup with Google/Cloudflare fallback, fail-open, configurable via `EMAIL_DOMAIN_VALIDATION` env var
+- [x] **CP-SEC-05** SA phone number validation — `@Pattern(regexp = "^(\\+27[0-9]{9})?$")` on register + profile forms
+- [x] **CP-SEC-06** Strong password validation — `@Pattern` (8+ chars, upper, lower, digit, special) on all password fields
+- [x] **CP-SEC-07** Cross-field password match — class-level `@PasswordsMatch` annotation using `BeanWrapperImpl`
+- [x] **CP-SEC-08** Custom auth failure handler — routes to `?locked`, `?unverified`, or `?error` based on exception type
+- [x] **CP-SEC-09** Flyway V6 — `email_verified`, `email_verification_token`, `email_verification_exp`, `failed_login_attempts`, `locked_until`
+- [x] **CP-SEC-10** Phone field added to `users` table (Flyway V5) and account settings UI
+
+---
+
+## Phase 4d — Signal Engine Tuning
+
+**Goal:** Fix gates that were blocking valid signals; expose AI confidence properly; UX improvements.
+
+- [x] **CP-SIG-01** RSI buy cap loosened: `< 60` → `< 65` (was blocking USDJPY/AUDUSD at London/NY overlap)
+- [x] **CP-SIG-02** RSI sell floor loosened: `> 40` → `> 35` (symmetric with buy side)
+- [x] **CP-SIG-03** MACD gate loosened: sign-only (`hist > 0`), dropped slope requirement (`hist > prev_hist`)
+- [x] **CP-SIG-04** Gate optimisation: skip AI (XGBoost) entirely if technical gate = HOLD — saves CPU on HOLD cycles
+- [x] **CP-SIG-05** H1 candle TTL cache (55 min) in signal-engine — eliminates redundant HTTP calls to MT5 bridge
+- [x] **CP-SIG-06** `mlConfidence` exposed in `/api/live/signals` — dashboard confidence column now shows AI confidence, not the always-zero signal confidence
+- [x] **CP-SIG-07** User-friendly reason strings — plain English, confidence shown as % (e.g. `AI confidence too low to trade (52% — minimum 55% required)`)
+- [x] **CP-SIG-08** ML → AI rename across UI column headers and all reason strings
+- [x] **CP-SIG-09** Table search added — client-side filter on signals, positions, trade history, and admin users tables
+- [x] **CP-SIG-10** Auto-reconnect on MT5 IPC pipe failure (`-10001`) in `feed.py` — retries once after `try_reconnect()`
+- [x] **CP-SIG-11** MT5 503 errors downgraded from ERROR to WARN in `DashboardController` and `SignalPollerService`
+- [ ] **CP-SIG-12** First hybrid signal confirmed — both technical and AI gates agree, trade opened (CP-16/17)
+
+---
+
+## Phase 4e — Pre-Market Readiness Check
+
+**Goal:** Confirm the system is ready before each trading week.
 
 **Goal:** Confirm the system is ready before markets reopen Sunday ~21:00 UTC.
 
-- [ ] **CP-PRE-01** All feature branches merged to `main` (see CP-UI-36 to 40)
+- [x] **CP-PRE-01** All feature branches merged to `main` (CP-UI-36 to CP-UI-42 all done)
 - [ ] **CP-PRE-02** Trade close email added (CP-UI-25) — confirms CP-18 in your inbox
-- [ ] **CP-PRE-03** MySQL running, Flyway V4 migration applied (check `symbol_settings` table has 4 rows)
-- [ ] **CP-PRE-04** MT5 bridge healthy: `GET http://localhost:8001/health` → `connected:true`
-- [ ] **CP-PRE-05** Signal engine healthy: `GET http://localhost:8002/health`
-- [ ] **CP-PRE-06** Backend running, dashboard loads, balance shows $100,000 USD
-- [ ] **CP-PRE-07** Bot enabled via dashboard — confirm green "Bot Running" badge in nav
-- [ ] **CP-PRE-08** SSE connected — confirm green dot in dashboard header, no 30s toast
-- [ ] **CP-PRE-09** Backend logs show `[EURUSD] Signal: HOLD` entries every ~60 seconds (scan running)
-- [ ] **CP-PRE-10** Per-symbol overrides visible in Bot Settings — all 4 pairs shown with SL/TP/volume
+- [x] **CP-PRE-03** MySQL running, Flyway V1–V6 migrations applied
+- [x] **CP-PRE-04** MT5 bridge healthy: `GET http://localhost:8001/health` → `connected:true`
+- [x] **CP-PRE-05** Signal engine healthy: `GET http://localhost:8002/health`
+- [x] **CP-PRE-06** Backend running, dashboard loads, balance shows $100,000 USD
+- [x] **CP-PRE-07** Bot enabled via dashboard — confirm green "Bot Running" badge in nav
+- [x] **CP-PRE-08** SSE connected — confirm green dot in dashboard header, no 30s toast
+- [x] **CP-PRE-09** Backend logs show `[EURUSD] Signal:` entries every ~60 seconds (scan running)
+- [x] **CP-PRE-10** Per-symbol overrides visible in Bot Settings — all 4 pairs shown with SL/TP/volume
 
 ---
 
@@ -201,6 +241,23 @@ CP-15: H1 signals all HOLD over weekend (expected — forex markets closed Sat/S
 
 CP-23: Models trained on 4,801 H1 candles each (~7 months of data).
        USDJPY best accuracy at 70%. Retrain monthly or after significant market regime change.
+
+SIGNAL GATE THRESHOLDS (current):
+  Technical gate — BUY:  EMA fast > slow, close > EMA200, RSI 30–65, MACD hist > 0
+  Technical gate — SELL: EMA fast < slow, close < EMA200, RSI 35–70, MACD hist < 0
+  AI gate — minimum confidence: 55% (MIN_CONFIDENCE = 0.55)
+  Both gates must agree on direction for a trade to open.
+  If technical = HOLD, AI gate is skipped entirely (gate optimisation).
+
+FLYWAY MIGRATIONS:
+  V1 — Initial schema (trades, signals, ohlcv, bot_config)
+  V2 — Users table (email, role, enabled, OAuth2)
+  V3 — Full name, invite token, password reset token
+  V4 — Per-symbol settings (symbol_settings, seeds 4 pairs)
+  V5 — Phone field on users (VARCHAR 20, SA format +27XXXXXXXXX)
+  V6 — Email verification (email_verified, token, expiry) + account lockout (failed_attempts, locked_until)
+
+BRAND: Blue Ocean Hub (renamed from Harvest Technologies — all UI and docs updated)
 
 CP-UI-07: Google OAuth2 setup steps (optional — password login works standalone):
   1. Go to https://console.cloud.google.com → APIs & Services → Credentials
