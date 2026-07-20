@@ -49,9 +49,6 @@ class HybridStrategy:
         tech = self._technical_signal(df)
 
         # ── Gate optimisation: skip ML entirely if technical HOLD ─────────────
-        # XGBoost is expensive — no point running it when the technical gate
-        # already blocks the signal. Both gates must agree, so if tech=HOLD
-        # the final result is always HOLD regardless of ML.
         if tech == "HOLD":
             return SignalResult(
                 signal="HOLD",
@@ -59,12 +56,13 @@ class HybridStrategy:
                 technical_signal="HOLD",
                 ml_signal="HOLD",
                 ml_confidence=0.0,
-                reason="Technical HOLD",
+                reason="Technical indicators show no clear trend — holding",
             )
 
         # ── ML gate ───────────────────────────────────────────────────────────
         ml_label, ml_conf = self._ml_signal(df_ohlcv)
         ml_sig: Signal = {1: "BUY", -1: "SELL", 0: "HOLD"}.get(ml_label, "HOLD")
+        pct = lambda v: f"{v * 100:.0f}%"
 
         if ml_sig == "HOLD":
             return SignalResult(
@@ -73,7 +71,7 @@ class HybridStrategy:
                 technical_signal=tech,
                 ml_signal="HOLD",
                 ml_confidence=ml_conf,
-                reason=f"AI HOLD (conf={ml_conf:.2f}, tech={tech})",
+                reason=f"AI predicts no trade ({pct(ml_conf)} sure) — Technical gate: {tech}",
             )
 
         if tech != ml_sig:
@@ -83,7 +81,7 @@ class HybridStrategy:
                 technical_signal=tech,
                 ml_signal=ml_sig,
                 ml_confidence=ml_conf,
-                reason=f"Disagreement: tech={tech}, AI={ml_sig} (conf={ml_conf:.2f})",
+                reason=f"Gates disagree — Technical: {tech}, AI predicts: {ml_sig} ({pct(ml_conf)})",
             )
 
         if ml_conf < self.MIN_CONFIDENCE:
@@ -93,17 +91,17 @@ class HybridStrategy:
                 technical_signal=tech,
                 ml_signal=ml_sig,
                 ml_confidence=ml_conf,
-                reason=f"AI confidence too low: {ml_conf:.2f} < {self.MIN_CONFIDENCE}",
+                reason=f"AI confidence too low to trade ({pct(ml_conf)} — minimum {pct(self.MIN_CONFIDENCE)} required)",
             )
 
-        logger.info(f"[{self.symbol}] Signal: {tech} | ML conf: {ml_conf:.2f}")
+        logger.info(f"[{self.symbol}] Signal: {tech} | AI conf: {pct(ml_conf)}")
         return SignalResult(
             signal=tech,
             confidence=ml_conf,
             technical_signal=tech,
             ml_signal=ml_sig,
             ml_confidence=ml_conf,
-            reason=f"Both gates agree ({tech}, conf={ml_conf:.2f})",
+            reason=f"Signal confirmed — Technical & AI agree: {tech} ({pct(ml_conf)} confidence)",
         )
 
     def _technical_signal(self, df: pd.DataFrame) -> Signal:
