@@ -178,46 +178,67 @@ Track your progress through each phase. Check off items as you complete them.
 
 ---
 
-## Phase 5 — MetaAPI Rewrite + Multi-Trader SaaS
+## Phase 5 — MetaAPI Rewrite + GCP Cloud Deployment (UAT)
 
-**Goal:** Replace the Windows-only MT5 bridge with MetaAPI (cloud-native). Each trader connects their own MT5 account. Bot trades on their behalf.
+**Goal:** Replace the Windows-only MT5 bridge with MetaAPI, deploy everything to GCP, and run UAT on cloud with paper trading + demo account. This phase is now the immediate priority — local dev is no longer viable for consistent testing.
 
-**Why this matters:** The local Python bridge can only connect to one MT5 terminal on one Windows machine. MetaAPI is cloud-based, supports multiple simultaneous MT5 accounts, and is Linux/Docker/GCP-compatible.
+**Why MetaAPI first:** The `MetaTrader5` Python package is a Windows-only DLL. It cannot run on Linux/Docker/GCP. MetaAPI provides a cloud REST API for MT5 — it is the only path to cloud deployment.
 
-### MetaAPI Integration
-- [ ] **CP-30** MetaAPI account created at https://metaapi.cloud (free tier)
-- [ ] **CP-31** MT5 demo account connected to MetaAPI
-- [ ] **CP-32** `mt5-bridge` rewritten to use MetaAPI REST (replaces `MetaTrader5` Python package)
-- [ ] **CP-33** Per-user `metaapi_account_id` column added to `users` table (V5 migration)
-- [ ] **CP-34** MT5 connect flow in Account Settings — user enters MetaAPI account ID, saved per user
+**UAT scope:** Paper trading stays ON. Demo account stays. The goal is a stable, always-on cloud environment where signals fire, trades open/close, and we accumulate enough data to validate the strategy — without depending on a local Windows machine.
 
-### Multi-Trader Architecture
-- [ ] **CP-35** Trade execution scoped per user — `TradeService.openTrade()` accepts user context
-- [ ] **CP-36** Dashboard balance/equity pulled from the logged-in user's MetaAPI account
-- [ ] **CP-37** Trade records scoped per user — each user sees only their own trades/signals
-- [ ] **CP-38** Trade open/close emails scoped to the triggering user (not just admins)
-- [ ] **CP-39** TRADER role added — has MT5 connected, gets trade alerts; distinct from INVESTOR (read-only)
+### Step 1 — MetaAPI Setup
+- [ ] **CP-30** MetaAPI account created at https://metaapi.cloud (free tier — 1 account, sufficient for UAT)
+- [ ] **CP-31** MT5 demo account connected to MetaAPI dashboard — status: Connected
+- [ ] **CP-32** MetaAPI account ID and API token added to `.env` (never committed)
 
-### Deployment
-- [ ] **CP-40** All services containerised and pushed to GCP Artifact Registry
-- [ ] **CP-41** Cloud SQL MySQL provisioned, Flyway migrations applied
-- [ ] **CP-42** Services deployed to Cloud Run — health checks green
-- [ ] **CP-43** Dashboard accessible at GCP-provisioned URL
-- [ ] **CP-44** Bot enabled on GCP — first signal produced in cloud environment
-- [ ] **CP-45** 48-hour unattended run with paper trades — no crashes or missed scans
+### Step 2 — mt5-bridge Rewrite
+- [ ] **CP-33** `mt5_client.py` rewritten — MetaAPI REST replaces `MetaTrader5` Python package
+- [ ] **CP-34** `feed.py` rewritten — candles and tick data via MetaAPI endpoints
+- [ ] **CP-35** `executor.py` rewritten — order open/close via MetaAPI
+- [ ] **CP-36** `config.py` updated — `METAAPI_ACCOUNT_ID`, `METAAPI_TOKEN` replace MT5 path/login/password
+- [ ] **CP-37** mt5-bridge tested locally via MetaAPI (no local MT5 terminal required)
+- [ ] **CP-38** Signal engine still produces signals end-to-end via MetaAPI bridge
+
+### Step 3 — GCP Infrastructure
+- [ ] **CP-39** GCP project created, billing enabled, required APIs enabled (Cloud Run, Cloud SQL, Artifact Registry, Secret Manager)
+- [ ] **CP-40** Cloud SQL MySQL 8 instance provisioned — `forexbot` database created
+- [ ] **CP-41** All secrets stored in Secret Manager (`DB_PASSWORD`, `METAAPI_TOKEN`, `MAIL_PASSWORD`, etc.)
+- [ ] **CP-42** Dockerfiles verified for all 3 services (mt5-bridge, signal-engine, backend)
+- [ ] **CP-43** Docker images built and pushed to GCP Artifact Registry
+
+### Step 4 — Cloud Run Deployment
+- [ ] **CP-44** `mt5-bridge` deployed to Cloud Run — health check green, MetaAPI connected
+- [ ] **CP-45** `signal-engine` deployed to Cloud Run — health check green, candles flowing
+- [ ] **CP-46** `backend` deployed to Cloud Run — Flyway migrations applied, dashboard loads
+- [ ] **CP-47** All 3 services communicating — dashboard shows balance from MetaAPI demo account
+- [ ] **CP-48** Bot enabled on GCP — signals firing every scan cycle in Cloud Run logs
+
+### Step 5 — UAT Validation
+- [ ] **CP-49** First BUY or SELL signal produced on cloud (CP-16 equivalent)
+- [ ] **CP-50** First paper trade opened and visible on cloud dashboard (CP-17 equivalent)
+- [ ] **CP-51** 48-hour unattended run — no crashes, no missed scans, trades opening/closing
+- [ ] **CP-52** 20+ paper trades accumulated — win rate calculated
+- [ ] **CP-53** Weekly review email received from cloud environment (proves scheduler running)
+
+### Step 6 — Multi-Trader (Post-UAT, Phase 5b)
+> Only start this after CP-53 is complete and win rate is satisfactory.
+- [ ] **CP-54** Per-user `metaapi_account_id` added to `users` table (new migration)
+- [ ] **CP-55** MT5 connect flow in Account Settings — user enters their own MetaAPI account ID
+- [ ] **CP-56** Trade execution, balance, and trade history scoped per user
+- [ ] **CP-57** TRADER role added (has MT5 + trade alerts) vs INVESTOR (read-only)
 
 ---
 
 ## Phase 6 — Production (Live Trading)
 
-> ⚠️ Only proceed here after CP-45 is complete and win rate is satisfactory over ≥ 100 paper trades.
+> ⚠️ Only proceed here after CP-52 is complete and win rate is satisfactory over ≥ 20 paper trades on cloud. Do not rush this.
 
-- [ ] **CP-46** Live MT5 account connected via MetaAPI
-- [ ] **CP-47** `PAPER_TRADING=false` confirmed in logs
-- [ ] **CP-48** First live trade opened (minimum lot 0.01)
-- [ ] **CP-49** Risk limits verified — SL/TP firing correctly, max open trades respected
-- [ ] **CP-50** Monitoring / alerting configured (GCP Cloud Monitoring or similar)
-- [ ] **CP-51** Weekly review process established — retrain ML model monthly
+- [ ] **CP-58** Live MT5 account connected via MetaAPI
+- [ ] **CP-59** `PAPER_TRADING=false` confirmed in logs
+- [ ] **CP-60** First live trade opened (minimum lot 0.01)
+- [ ] **CP-61** Risk limits verified — SL/TP firing correctly, max open trades respected
+- [ ] **CP-62** GCP Cloud Monitoring alerts configured (service crash, trade error, low balance)
+- [ ] **CP-63** Monthly retrain schedule established — `train_all.py` run against fresh candles
 
 ---
 
