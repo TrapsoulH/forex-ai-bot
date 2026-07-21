@@ -1,8 +1,5 @@
-# NOTE: MetaTrader5 Python package requires Windows.
-# This Dockerfile is for reference/GCP Windows VM deployment.
-# For local development, run `python src/main.py` directly on Windows.
-
-FROM python:3.11-slim-windowsservercore
+# MetaAPI-powered bridge — runs on standard Linux (no Windows dependency)
+FROM python:3.11-slim
 
 WORKDIR /app
 COPY requirements.txt .
