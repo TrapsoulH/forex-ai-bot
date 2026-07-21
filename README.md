@@ -1,6 +1,6 @@
-# forex-ai-bot
+# forex-ai-bot — Blue Ocean Hub
 
-An AI-powered forex trading SaaS built with Python, Spring Boot, and MySQL. Uses a hybrid technical + ML strategy. Designed for local dev on Windows (MT5 bridge) with a cloud-native path via MetaAPI + GCP.
+An AI-powered forex trading SaaS built with Python, Spring Boot, and MySQL. Uses a hybrid technical + ML strategy. MT5 bridge runs via MetaAPI (cloud-native, Linux-compatible). UAT environment live at **https://blue-ocean-hub.com**.
 
 > **Track your progress:** See [CHECKPOINTS.md](./CHECKPOINTS.md) for the full development-to-production milestone list.
 
@@ -13,9 +13,9 @@ An AI-powered forex trading SaaS built with Python, Spring Boot, and MySQL. Uses
 │                        User Browser                          │
 │          Thymeleaf Dashboard + EventSource (SSE)            │
 └──────────────────────────┬──────────────────────────────────┘
-                           │ HTTP / SSE
+                           │ HTTPS (Cloudflare Tunnel)
 ┌──────────────────────────▼──────────────────────────────────┐
-│              Spring Boot Backend (Java 21)                   │
+│            Nginx (GCP VM) → Spring Boot :8080               │
 │   Dashboard · Admin · Settings · Auth · SSE · Email         │
 └───────┬─────────────────────────────────────┬───────────────┘
         │ REST/HTTP                            │ JDBC + Flyway
@@ -27,16 +27,17 @@ An AI-powered forex trading SaaS built with Python, Spring Boot, and MySQL. Uses
 └───────┬───────────┘               │  users · ohlcv          │
         │ REST/HTTP                 └────────────────────────┘
 ┌───────▼───────────┐
-│   mt5-bridge      │  ← Windows only for dev
-│    (Python)       │     MetaAPI replaces this in Phase 5
-│  MetaTrader5 API  │
+│   mt5-bridge      │  ← MetaAPI SDK (Linux/cloud-native)
+│    (Python)       │     no Windows dependency
+│  MetaAPI Cloud    │
 │  Price feed +     │
 │  Order executor   │
 └───────┬───────────┘
-        │ MT5 Protocol
+        │ MetaAPI Cloud (London)
 ┌───────▼───────────┐
 │  MetaTrader 5     │
-│  (Demo Account)   │
+│  Demo Account     │
+│  (MetaAPI managed)│
 └───────────────────┘
 ```
 
@@ -53,14 +54,15 @@ An AI-powered forex trading SaaS built with Python, Spring Boot, and MySQL. Uses
 
 ---
 
-## ⚠️ MT5 Windows Constraint
+## Deployment
 
-The `MetaTrader5` Python package **only runs on Windows**. Deployment strategy:
+| Environment | MT5 Bridge | Infrastructure | URL |
+|---|---|---|---|
+| **Local dev** | `MetaTrader5` Python pkg (Windows only, MT5 desktop open) | Local machine | http://localhost:8080 |
+| **UAT (current)** | MetaAPI SDK (cloud-native, Linux) | GCP e2-medium + Docker Compose + Cloudflare Tunnel | https://blue-ocean-hub.com |
+| **Production** | MetaAPI SDK | GCP (TBD post-UAT) | https://blue-ocean-hub.com |
 
-| Environment | MT5 Bridge | Everything Else |
-|---|---|---|
-| **Development** | Local Windows machine (MetaTrader 5 desktop open) | Local |
-| **Phase 5 / Prod** | MetaAPI REST API (cloud, Linux-friendly) | GCP Cloud Run + Cloud SQL |
+The `MetaTrader5` Python package only works on Windows and is no longer used in cloud environments. MetaAPI is the production path.
 
 ---
 
@@ -115,8 +117,11 @@ python src/main.py
 
 ### 4b. Train ML models (first run only, or after market regime change)
 ```bash
-# signal-engine must be running
-python train_all.py
+# signal-engine must be running — trigger via API (no standalone script)
+curl -X POST http://localhost:8002/train/EURUSD
+curl -X POST http://localhost:8002/train/GBPUSD
+curl -X POST http://localhost:8002/train/USDJPY
+curl -X POST http://localhost:8002/train/AUDUSD
 ```
 
 ### 5. Start backend (Flyway migrations run on startup)
@@ -194,9 +199,15 @@ Schema is managed exclusively by Flyway — never by Hibernate DDL auto.
 forex-ai-bot/
 ├── CHECKPOINTS.md
 ├── README.md
-├── train_all.py                               # Train ML models for all 4 symbols
 ├── .env.example                               # Copy to .env — never commit .env
 ├── docker-compose.yml
+├── deploy.sh                                  # Pull latest + docker compose up --build
+├── restart.sh                                 # docker compose restart
+├── status.sh                                  # docker compose ps + cloudflared status
+├── logs.sh [SERVICE]                          # docker compose logs -f (default: backend)
+├── deploy/
+│   ├── nginx.conf                             # Nginx reverse proxy + SSE config
+│   └── gcp-vm-setup.sh                        # One-shot VM bootstrap (Docker + Nginx + Git)
 │
 ├── mt5-bridge/                                # Python: MT5 connectivity
 │   └── src/
@@ -303,9 +314,10 @@ forex-ai-bot/
 | Database migrations | `Flyway` | Free |
 | Database | `MySQL 8` | Free |
 | Containerisation | `Docker` + `Docker Compose` | Free |
-| Cloud (Phase 5+) | GCP Cloud Run + Cloud SQL | ~$15–30/mo |
+| Cloud (UAT) | GCP e2-medium VM + Docker Compose | ~$25/mo (within $300 free trial) |
+| Tunnel | Cloudflare Tunnel (`cloudflared`) | Free |
 
-**Total cost: $0 for local development.**
+**Total cost: $0 for local development. UAT runs within GCP free trial credits.**
 
 ---
 
