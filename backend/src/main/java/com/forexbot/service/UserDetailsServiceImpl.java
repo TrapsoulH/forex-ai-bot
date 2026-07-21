@@ -24,22 +24,24 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
     @Override
     @Transactional
-    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
+    public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
+        // Users log in with their email address — look up by email, fall back to username for admin seed account
+        User user = userRepository.findByEmail(email)
+                .or(() -> userRepository.findByUsername(email))
                 .orElseThrow(() -> {
-                    log.warn("Login attempt for unknown username: {}", username);
-                    return new UsernameNotFoundException("User not found: " + username);
+                    log.warn("Login attempt for unknown email: {}", email);
+                    return new UsernameNotFoundException("User not found: " + email);
                 });
 
         // Admin-disabled accounts
         if (!user.isEnabled()) {
-            log.warn("Login attempt for disabled account: {}", username);
+            log.warn("Login attempt for disabled account: {}", email);
             throw new DisabledException("Account is disabled.");
         }
 
         // Email not yet verified
         if (!user.isEmailVerified()) {
-            log.warn("Login attempt for unverified account: {}", username);
+            log.warn("Login attempt for unverified account: {}", email);
             throw new DisabledException("EMAIL_NOT_VERIFIED");
         }
 
@@ -48,7 +50,7 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         if (user.getLockedUntil() != null) {
             if (user.getLockedUntil().isAfter(Instant.now())) {
                 isLocked = true;
-                log.warn("Login attempt for locked account: {} (locked until {})", username, user.getLockedUntil());
+                log.warn("Login attempt for locked account: {} (locked until {})", email, user.getLockedUntil());
             } else {
                 // Window passed — clear lock so next login attempt starts fresh
                 user.setLockedUntil(null);

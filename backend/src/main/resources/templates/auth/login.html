@@ -42,7 +42,7 @@
     </div>
     <div th:if="${param.error}" class="alert alert-error" style="margin-bottom:20px">
       <i data-lucide="alert-circle"></i>
-      <span>Invalid username or password. Please try again.</span>
+      <span>Invalid email or password. Please try again.</span>
     </div>
     <div th:if="${param.logout}" class="alert alert-success" style="margin-bottom:20px">
       <i data-lucide="check-circle"></i>
@@ -61,14 +61,14 @@
       <span>Your account is ready! Sign in below to get started.</span>
     </div>
 
-    <!-- Username/Password form -->
+    <!-- Email/Password form -->
     <form th:action="@{/login}" method="post">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
       <div style="margin-bottom:14px">
-        <label class="label">Username</label>
+        <label class="label">Email address</label>
         <div class="input-wrap">
-          <i data-lucide="user" class="i-pfx"></i>
-          <input type="text" name="username" class="input" placeholder="your_username" autofocus required autocomplete="username"/>
+          <i data-lucide="mail" class="i-pfx"></i>
+          <input type="email" name="username" class="input" placeholder="you@example.com" autofocus required autocomplete="email"/>
         </div>
       </div>
       <div style="margin-bottom:8px">
