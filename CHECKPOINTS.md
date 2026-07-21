@@ -180,65 +180,68 @@ Track your progress through each phase. Check off items as you complete them.
 
 ## Phase 5 — MetaAPI Rewrite + GCP Cloud Deployment (UAT)
 
-**Goal:** Replace the Windows-only MT5 bridge with MetaAPI, deploy everything to GCP, and run UAT on cloud with paper trading + demo account. This phase is now the immediate priority — local dev is no longer viable for consistent testing.
+**Goal:** Replace the Windows-only MT5 bridge with MetaAPI, deploy everything to GCP, and run UAT on cloud with paper trading + demo account.
 
-**Why MetaAPI first:** The `MetaTrader5` Python package is a Windows-only DLL. It cannot run on Linux/Docker/GCP. MetaAPI provides a cloud REST API for MT5 — it is the only path to cloud deployment.
-
-**UAT scope:** Paper trading stays ON. Demo account stays. The goal is a stable, always-on cloud environment where signals fire, trades open/close, and we accumulate enough data to validate the strategy — without depending on a local Windows machine.
+**UAT scope:** Paper trading ON. Demo account. Always-on cloud environment — no dependency on a local Windows machine. URL: https://blue-ocean-hub.com
 
 ### Step 1 — MetaAPI Setup
-- [ ] **CP-30** MetaAPI account created at https://metaapi.cloud (free tier — 1 account, sufficient for UAT)
-- [ ] **CP-31** MT5 demo account connected to MetaAPI dashboard — status: Connected
-- [ ] **CP-32** MetaAPI account ID and API token added to `.env` (never committed)
+- [x] **CP-30** MetaAPI account created at https://metaapi.cloud (Cloud-G2, London region)
+- [x] **CP-31** MT5 demo account 109814567 connected to MetaAPI — status: Connected
+- [x] **CP-32** MetaAPI account ID and API token added to `.env` (never committed)
 
 ### Step 2 — mt5-bridge Rewrite
-- [ ] **CP-33** `mt5_client.py` rewritten — MetaAPI REST replaces `MetaTrader5` Python package
-- [ ] **CP-34** `feed.py` rewritten — candles and tick data via MetaAPI endpoints
-- [ ] **CP-35** `executor.py` rewritten — order open/close via MetaAPI
-- [ ] **CP-36** `config.py` updated — `METAAPI_ACCOUNT_ID`, `METAAPI_TOKEN` replace MT5 path/login/password
-- [ ] **CP-37** mt5-bridge tested locally via MetaAPI (no local MT5 terminal required)
-- [ ] **CP-38** Signal engine still produces signals end-to-end via MetaAPI bridge
+- [x] **CP-33** `mt5_client.py` rewritten — MetaAPI SDK replaces `MetaTrader5` Python package
+- [x] **CP-34** `feed.py` rewritten — candles via `account.get_historical_candles()`, ticks via `conn.get_symbol_price()`
+- [x] **CP-35** `executor.py` rewritten — orders via `conn.create_market_buy/sell_order()`, close via `conn.close_position()`
+- [x] **CP-36** `config.py` updated — `MT5_BRIDGE_METAAPI_TOKEN`, `MT5_BRIDGE_METAAPI_ACCOUNT_ID` via pydantic-settings
+- [x] **CP-37** mt5-bridge tested via MetaAPI — balance $100,000 USD confirmed in logs
+- [x] **CP-38** Signal engine producing signals end-to-end via MetaAPI bridge
 
 ### Step 3 — GCP Infrastructure
-- [ ] **CP-39** GCP project created, billing enabled, required APIs enabled (Cloud Run, Cloud SQL, Artifact Registry, Secret Manager)
-- [ ] **CP-40** Cloud SQL MySQL 8 instance provisioned — `forexbot` database created
-- [ ] **CP-41** All secrets stored in Secret Manager (`DB_PASSWORD`, `METAAPI_TOKEN`, `MAIL_PASSWORD`, etc.)
-- [ ] **CP-42** Dockerfiles verified for all 3 services (mt5-bridge, signal-engine, backend)
-- [ ] **CP-43** Docker images built and pushed to GCP Artifact Registry
+- [x] **CP-39** GCP e2-medium VM (2 vCPU, 4GB RAM) created — Ubuntu/Debian 22, us-central1 region
+- [x] **CP-40** Docker + Docker Compose installed on VM (Debian repo, not Ubuntu)
+- [x] **CP-41** Nginx installed and configured as reverse proxy (port 80 → Spring Boot 8080)
+- [x] **CP-42** Cloudflare Tunnel (`cloudflared`) installed as systemd service — no firewall rules needed
+- [x] **CP-43** All secrets in `.env` on VM only — never committed; `.gitignore`d
 
-### Step 4 — Cloud Run Deployment
-- [ ] **CP-44** `mt5-bridge` deployed to Cloud Run — health check green, MetaAPI connected
-- [ ] **CP-45** `signal-engine` deployed to Cloud Run — health check green, candles flowing
-- [ ] **CP-46** `backend` deployed to Cloud Run — Flyway migrations applied, dashboard loads
-- [ ] **CP-47** All 3 services communicating — dashboard shows balance from MetaAPI demo account
-- [ ] **CP-48** Bot enabled on GCP — signals firing every scan cycle in Cloud Run logs
+### Step 4 — Docker Compose Deployment
+- [x] **CP-44** `mt5-bridge` container running — MetaAPI connected, candles flowing
+- [x] **CP-45** `signal-engine` container running — signals producing every 60 seconds
+- [x] **CP-46** `backend` container running — Flyway V1–V6 applied, dashboard loads
+- [x] **CP-47** `mysql` container running — persistent volume, not exposed externally
+- [x] **CP-48** All 4 services healthy — `docker compose ps` all green
+- [x] **CP-49** Dashboard accessible at https://blue-ocean-hub.com
+- [x] **CP-50** ML models trained on GCP — all 4 symbols via `POST /train/{symbol}` (~59% accuracy, 801 samples)
+- [x] **CP-51** Management scripts added — `deploy.sh`, `restart.sh`, `status.sh`, `logs.sh`
+- [x] **CP-52** Cloudflared as systemd service — survives VM reboots; Docker `restart: unless-stopped` for containers
 
 ### Step 5 — UAT Validation
-- [ ] **CP-49** First BUY or SELL signal produced on cloud (CP-16 equivalent)
-- [ ] **CP-50** First paper trade opened and visible on cloud dashboard (CP-17 equivalent)
-- [ ] **CP-51** 48-hour unattended run — no crashes, no missed scans, trades opening/closing
-- [ ] **CP-52** 20+ paper trades accumulated — win rate calculated
-- [ ] **CP-53** Weekly review email received from cloud environment (proves scheduler running)
+- [ ] **CP-53** First BUY or SELL signal produced on cloud — both gates agree
+- [ ] **CP-54** First paper trade opened and visible on cloud dashboard
+- [ ] **CP-55** 48-hour unattended run — no crashes, no missed scans
+- [ ] **CP-56** 20+ paper trades accumulated — win rate calculated
+- [ ] **CP-57** Weekly review email received from cloud (proves scheduler running)
 
 ### Step 6 — Multi-Trader (Post-UAT, Phase 5b)
-> Only start this after CP-53 is complete and win rate is satisfactory.
-- [ ] **CP-54** Per-user `metaapi_account_id` added to `users` table (new migration)
-- [ ] **CP-55** MT5 connect flow in Account Settings — user enters their own MetaAPI account ID
-- [ ] **CP-56** Trade execution, balance, and trade history scoped per user
-- [ ] **CP-57** TRADER role added (has MT5 + trade alerts) vs INVESTOR (read-only)
+> Only start this after CP-57 is complete and win rate is satisfactory.
+> Currently all users share the single MetaAPI demo account — acceptable for UAT/preview.
+- [ ] **CP-58** Per-user `metaapi_account_id` added to `users` table (new migration)
+- [ ] **CP-59** MT5 connect flow in Account Settings — user enters their own MetaAPI account ID
+- [ ] **CP-60** Trade execution, balance, and trade history scoped per user
+- [ ] **CP-61** TRADER role added (own MT5 + trade alerts) vs INVESTOR (read-only)
 
 ---
 
 ## Phase 6 — Production (Live Trading)
 
-> ⚠️ Only proceed here after CP-52 is complete and win rate is satisfactory over ≥ 20 paper trades on cloud. Do not rush this.
+> ⚠️ Only proceed here after CP-56 is complete and win rate is satisfactory over ≥ 20 paper trades on cloud. Do not rush this.
 
-- [ ] **CP-58** Live MT5 account connected via MetaAPI
-- [ ] **CP-59** `PAPER_TRADING=false` confirmed in logs
-- [ ] **CP-60** First live trade opened (minimum lot 0.01)
-- [ ] **CP-61** Risk limits verified — SL/TP firing correctly, max open trades respected
-- [ ] **CP-62** GCP Cloud Monitoring alerts configured (service crash, trade error, low balance)
-- [ ] **CP-63** Monthly retrain schedule established — `train_all.py` run against fresh candles
+- [ ] **CP-62** Live MT5 account connected via MetaAPI
+- [ ] **CP-63** `PAPER_TRADING=false` confirmed in logs
+- [ ] **CP-64** First live trade opened (minimum lot 0.01)
+- [ ] **CP-65** Risk limits verified — SL/TP firing correctly, max open trades respected
+- [ ] **CP-66** GCP Cloud Monitoring alerts configured (service crash, trade error, low balance)
+- [ ] **CP-67** Monthly retrain schedule established — `POST /train/{symbol}` against fresh candles
 
 ---
 
@@ -280,21 +283,47 @@ FLYWAY MIGRATIONS:
 
 BRAND: Blue Ocean Hub (renamed from Harvest Technologies — all UI and docs updated)
 
+GCP UAT ENVIRONMENT:
+  URL:      https://blue-ocean-hub.com
+  VM:       GCP e2-medium, us-central1, Debian — external IP 35.226.105.18
+  Tunnel:   Cloudflare Tunnel (cloudflared systemd service) — no open inbound ports
+  Nginx:    /etc/nginx/sites-available/blueocean → proxy to localhost:8080
+  Compose:  ~/forex-ai-bot/docker-compose.yml — 4 services (mysql, mt5-bridge, signal-engine, backend)
+  Scripts:  deploy.sh / restart.sh / status.sh / logs.sh [SERVICE]
+  MetaAPI:  Cloud-G2, London region — account 109814567, balance $100,000 USD demo
+  Models:   Trained on GCP — ~801 samples, ~59% accuracy (retrain monthly)
+            Trigger: docker exec forexbot-signal-engine python -c "..."
+            POST http://localhost:8002/train/{symbol} per symbol (EURUSD, GBPUSD, USDJPY, AUDUSD)
+
+DEFAULT ADMIN (seed on first startup — DataInitializer.java):
+  Username: admin
+  Password: Harvest2025!   ← CHANGE IMMEDIATELY after first login
+  Note: emailVerified=true is set in code — no email confirmation needed for seeded admin
+
 CP-UI-07: Google OAuth2 setup steps (optional — password login works standalone):
   1. Go to https://console.cloud.google.com → APIs & Services → Credentials
   2. Create OAuth 2.0 Client ID (Web application)
-  3. Add Authorized redirect URI: http://localhost:8080/login/oauth2/code/google
-  4. Set env vars: GOOGLE_CLIENT_ID=... and GOOGLE_CLIENT_SECRET=...
-  5. Add to .env (never commit credentials)
+  3. Add Authorized redirect URI: https://blue-ocean-hub.com/login/oauth2/code/google
+  4. Set env vars: GOOGLE_CLIENT_ID=... and GOOGLE_CLIENT_SECRET=... in .env on VM
 
 KNOWN LIMITATION — scan_interval_sec UI field:
   The scan interval setting in Bot Settings writes to the DB but does NOT affect the
   running scheduler at runtime. The @Scheduled annotation reads bot.scan-interval-seconds
   from application.yml at startup only. Changing this field requires a restart to take
-  effect. Fix planned for Phase 5 (dynamic ScheduledExecutorService).
+  effect. Fix planned for Phase 5b.
+
+KNOWN LIMITATION — single shared MT5 account:
+  All users currently share the same MetaAPI demo account (from .env).
+  Per-user account linking is planned for Phase 5b (CP-58 to CP-61).
+  For UAT/preview, only invite users you are comfortable sharing demo account data with.
+
+KNOWN LIMITATION — signal timestamps:
+  Dashboard timestamps display in UTC. SAST is UTC+2. If dashboard shows 17:02 and
+  local time is 19:02, the display is correct UTC — not a bug, but a UX improvement
+  to add SAST conversion (planned).
 
 ROLE MODEL (current vs future):
   Current: ADMIN (operator + trader) / USER (observer). Trade emails go to ADMIN only.
-  Phase 5: ADMIN / TRADER (own MT5, get trade alerts) / INVESTOR (read-only, weekly review).
-  The current ADMIN role effectively IS the trader in the single-account local setup.
+  Phase 5b: ADMIN / TRADER (own MT5, get trade alerts) / INVESTOR (read-only, weekly review).
+  The current ADMIN role effectively IS the trader in the single-account UAT setup.
 ```

@@ -377,7 +377,7 @@
         <tbody>
           <tr th:each="s : ${recentSignals}">
             <td style="white-space:nowrap;color:#64748b;font-size:.8rem"
-                th:text="${#temporals.format(s.createdAt, 'dd MMM HH:mm:ss')}">—</td>
+                th:text="${#temporals.format(s.createdAt, 'dd MMM HH:mm:ss', 'Africa/Johannesburg')}">—</td>
             <td style="font-weight:600;color:#e2e8f0" th:text="${s.symbol}">EURUSD</td>
             <td>
               <span class="badge"
@@ -557,7 +557,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     tbody.innerHTML = signals.map(s => `
       <tr>
-        <td style="white-space:nowrap;color:#64748b;font-size:.8rem">${s.createdAt ?? '—'}</td>
+        <td style="white-space:nowrap;color:#64748b;font-size:.8rem">${s.createdAt ? new Date(s.createdAt).toLocaleString('en-ZA', {timeZone:'Africa/Johannesburg',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}) : '—'}</td>
         <td style="font-weight:600;color:#e2e8f0">${s.symbol}</td>
         <td><span class="badge ${badgeCls(s.direction)}">${s.direction}</span></td>
         <td>${(s.mlConfidence != null && parseFloat(s.mlConfidence) > 0) ? s.mlConfidence + '%' : (s.confidence != null && parseFloat(s.confidence) > 0 ? s.confidence + '%' : '—')}</td>
