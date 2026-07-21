@@ -8,4 +8,5 @@ FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 COPY --from=builder /build/target/*.jar app.jar
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Tune JVM heap for e2-medium (4GB RAM) — leaves headroom for Python services and MySQL
+ENTRYPOINT ["java", "-Xms256m", "-Xmx768m", "-jar", "app.jar"]
