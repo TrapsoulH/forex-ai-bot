@@ -221,9 +221,9 @@
             <td>
               <div style="display:flex;align-items:center;gap:10px">
                 <div class="ic ic-sm ic-muted" style="font-size:.7rem;font-weight:700;color:#94a3b8;flex-shrink:0"
-                     th:text="${u.fullName != null ? u.fullName.substring(0,1).toUpperCase() : u.username.substring(0,1).toUpperCase()}">A</div>
+                     th:text="${(u.fullName != null and !u.fullName.isEmpty()) ? u.fullName.substring(0,1).toUpperCase() : u.email.substring(0,1).toUpperCase()}">A</div>
                 <div>
-                  <div style="font-weight:600;color:#e2e8f0;font-size:.875rem" th:text="${u.fullName != null ? u.fullName : u.username}">—</div>
+                  <div style="font-weight:600;color:#e2e8f0;font-size:.875rem" th:text="${(u.fullName != null and !u.fullName.isEmpty()) ? u.fullName : u.email}">—</div>
                   <div style="font-size:.75rem;color:#475569" th:text="'@' + ${u.username}">@user</div>
                 </div>
               </div>
