@@ -280,17 +280,60 @@
 
             <!-- Actions -->
             <td>
-              <form th:action="@{/admin/users/{id}/toggle(id=${u.id})}" method="post">
-                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                <button type="submit"
-                        th:disabled="${u.username == #authentication.name}"
-                        th:title="${u.username == #authentication.name ? 'Cannot disable your own account' : ''}"
-                        class="btn btn-xs"
-                        th:classappend="${u.enabled} ? 'btn-danger' : 'btn-ghost-green'">
-                  <i th:attr="data-lucide=${u.enabled} ? 'user-x' : 'user-check'"></i>
-                  <span th:text="${u.enabled} ? 'Disable' : 'Enable'">Toggle</span>
-                </button>
-              </form>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+
+                <!-- Enable / Disable toggle -->
+                <form th:action="@{/admin/users/{id}/toggle(id=${u.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button type="submit"
+                          th:disabled="${u.username == #authentication.name}"
+                          th:title="${u.username == #authentication.name ? 'Cannot disable your own account' : (u.enabled ? 'Disable account' : 'Enable account')}"
+                          class="btn btn-xs"
+                          th:classappend="${u.enabled} ? 'btn-danger' : 'btn-ghost-green'">
+                    <i th:attr="data-lucide=${u.enabled} ? 'user-x' : 'user-check'"></i>
+                    <span th:text="${u.enabled} ? 'Disable' : 'Enable'">Toggle</span>
+                  </button>
+                </form>
+
+                <!-- Resend invite (only if user has never logged in) -->
+                <form th:if="${u.lastLoginAt == null}"
+                      th:action="@{/admin/users/{id}/resend-invite(id=${u.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button type="submit" class="btn btn-xs btn-ghost" title="Resend invite email">
+                    <i data-lucide="send"></i> Resend invite
+                  </button>
+                </form>
+
+                <!-- Unlock (only if account is locked) -->
+                <form th:if="${u.lockedUntil != null}"
+                      th:action="@{/admin/users/{id}/unlock(id=${u.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button type="submit" class="btn btn-xs btn-ghost-green" title="Unlock account (too many failed logins)">
+                    <i data-lucide="lock-open"></i> Unlock
+                  </button>
+                </form>
+
+                <!-- Force password reset (only for users who have logged in) -->
+                <form th:if="${u.lastLoginAt != null and u.username != #authentication.name}"
+                      th:action="@{/admin/users/{id}/reset-password(id=${u.id})}" method="post">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button type="submit" class="btn btn-xs btn-ghost" title="Send password reset email">
+                    <i data-lucide="key-round"></i> Reset pwd
+                  </button>
+                </form>
+
+                <!-- Delete user -->
+                <form th:unless="${u.username == #authentication.name}"
+                      th:action="@{/admin/users/{id}/delete(id=${u.id})}" method="post"
+                      onsubmit="return confirm('Delete ' + this.dataset.email + '? This cannot be undone.')"
+                      th:attr="data-email=${u.email}">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                  <button type="submit" class="btn btn-xs btn-danger" title="Permanently delete this user">
+                    <i data-lucide="trash-2"></i> Delete
+                  </button>
+                </form>
+
+              </div>
             </td>
 
           </tr>
