@@ -174,41 +174,33 @@
     }
 
     /* Hero entrance — fires immediately on page load */
-    .hero-badge   { animation: fadeUp .5s cubic-bezier(.22,.68,0,1.2) both; animation-delay: .05s; }
-    .hero h1      { animation: fadeUp .6s cubic-bezier(.22,.68,0,1.1) both; animation-delay: .15s; }
-    .hero-sub     { animation: fadeUp .6s ease both; animation-delay: .28s; }
-    .hero-actions { animation: fadeUp .6s ease both; animation-delay: .38s; }
-    .hero-trust   { animation: fadeUp .5s ease both; animation-delay: .48s; }
-    .hero-visual  { animation: slideRight .7s cubic-bezier(.22,.68,0,1.1) both; animation-delay: .2s; }
+    .hero-badge   { animation: fadeUp .6s cubic-bezier(.22,.68,0,1.2) both; animation-delay: .05s; }
+    .hero h1      { animation: fadeUp .7s cubic-bezier(.22,.68,0,1.1) both; animation-delay: .2s; }
+    .hero-sub     { animation: fadeUp .7s ease both; animation-delay: .38s; }
+    .hero-actions { animation: fadeUp .7s ease both; animation-delay: .52s; }
+    .hero-trust   { animation: fadeUp .6s ease both; animation-delay: .66s; }
+    .hero-visual  { animation: slideRight .9s cubic-bezier(.22,.68,0,1.1) both; animation-delay: .28s; }
 
     /* Hero card floats gently */
     .hero-card { animation: float 6s ease-in-out infinite; }
 
     /* Signal rows stagger in */
-    .signal-row { opacity: 0; animation: fadeUp .45s ease both; }
-    .signal-row:nth-child(1) { animation-delay: .55s; }
-    .signal-row:nth-child(2) { animation-delay: .65s; }
-    .signal-row:nth-child(3) { animation-delay: .75s; }
-    .signal-row:nth-child(4) { animation-delay: .85s; }
+    .signal-row { opacity: 0; animation: fadeUp .5s ease both; }
+    .signal-row:nth-child(1) { animation-delay: .85s; }
+    .signal-row:nth-child(2) { animation-delay: 1.0s; }
+    .signal-row:nth-child(3) { animation-delay: 1.15s; }
+    .signal-row:nth-child(4) { animation-delay: 1.3s; }
 
     /* Mini stats in hero */
-    .hero-mini-stats { animation: fadeIn .45s ease both; animation-delay: 1.0s; opacity: 0; }
+    .hero-mini-stats { animation: fadeIn .5s ease both; animation-delay: 1.5s; opacity: 0; }
 
-    /* Scroll reveal — content visible by default, animation is enhancement only */
-    .reveal { opacity: 1; transform: none; }
-    .reveal.animate-in {
-      animation: fadeUp .65s ease both;
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity .65s ease, transform .65s ease;
     }
-
-    /* ── Accessibility: no motion ── */
-    @media (prefers-reduced-motion: reduce) {
-      .hero-badge, .hero h1, .hero-sub, .hero-actions, .hero-trust,
-      .hero-visual, .signal-row, .hero-mini-stats {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
-      }
-    }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
 
     /* ── Landing mobile hamburger ── */
     .l-ham { display: none; flex-direction: column; justify-content: center; gap: 5px; width: 38px; height: 38px; padding: 7px; border: none; background: rgba(59,130,246,.08); border-radius: 8px; cursor: pointer; flex-shrink: 0; z-index: 201; }
@@ -248,13 +240,8 @@
 
     /* ── Mobile ── */
     @media (max-width: 768px) {
-      .hero { padding: 100px 20px 60px; min-height: unset; }
-      .hero-inner { grid-template-columns: 1fr; gap: 32px; }
+      .hero-inner { grid-template-columns: 1fr; gap: 48px; }
       .hero-visual { display: none; }
-      .hero h1 { font-size: clamp(1.9rem, 8vw, 2.6rem); }
-      .hero-sub { font-size: 1rem; margin-bottom: 28px; }
-      .hero-actions { flex-direction: column; gap: 10px; }
-      .btn-hero-primary, .btn-hero-ghost { width: 100%; justify-content: center; padding: 13px 20px; }
       .stats-bar-inner { grid-template-columns: 1fr 1fr; }
       .hiw-grid { grid-template-columns: 1fr; }
       .hiw-grid::before { display: none; }
@@ -262,18 +249,9 @@
       .l-nav-cta { display: none; }
       .logo-name { font-size: 1rem; }
       .l-ham { display: flex; }
-      .section { padding: 64px 20px; }
-      .l-footer-inner { flex-direction: column; align-items: flex-start; gap: 12px; }
-      .l-footer-links { flex-wrap: wrap; gap: 16px; }
     }
     @media (max-width: 480px) {
       .l-mob-drawer { width: 100%; border-left: none; }
-      .stats-bar-inner { grid-template-columns: 1fr 1fr; gap: 0; }
-      .stat-item { padding: 20px 12px; }
-      .stat-val { font-size: 1.5rem; }
-      .preview-grid { grid-template-columns: 1fr; }
-      .cta-buttons { flex-direction: column; }
-      .cta-buttons a { width: 100%; justify-content: center; }
     }
 
     /* ── Shared from app.css ── */
@@ -671,14 +649,16 @@ document.addEventListener('DOMContentLoaded', () => {
   // Close drawer when clicking a nav link (anchor links)
   lDrawer?.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', closeLDrawer));
 
-  // ── Scroll reveal — purely cosmetic, content already visible ──
+  // ── Scroll reveal (Intersection Observer) ──
   const revealObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (!entry.isIntersecting) return;
-      entry.target.classList.add('animate-in');
+      const delay = parseInt(entry.target.dataset.delay || 0);
+      setTimeout(() => entry.target.classList.add('visible'), delay);
       revealObserver.unobserve(entry.target);
     });
-  }, { threshold: 0.05 });
+  }, { threshold: 0.12 });
+
   document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
 
   // ── Count-up for stats ──
