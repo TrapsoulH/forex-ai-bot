@@ -688,6 +688,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const statsBar = document.querySelector('.stats-bar');
   if (statsBar) statsObserver.observe(statsBar);
+
+  // ── "Signed out" toast after logout ──
+  if (new URLSearchParams(window.location.search).has('loggedout')) {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#0f172a;border:1px solid rgba(16,185,129,.35);color:#d1fae5;padding:12px 24px;border-radius:10px;font-size:.88rem;font-weight:600;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;align-items:center;gap:10px';
+    toast.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> You've been signed out.';
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.transition = 'opacity .5s'; toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 3500);
+    history.replaceState(null, '', '/');
+  }
 });
 </script>
 </body>
