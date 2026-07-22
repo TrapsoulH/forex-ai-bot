@@ -194,22 +194,19 @@
     /* Mini stats in hero */
     .hero-mini-stats { animation: fadeIn .45s ease both; animation-delay: 1.0s; opacity: 0; }
 
-    /* Scroll reveal */
-    .reveal {
-      opacity: 0;
-      transform: translateY(28px);
-      transition: opacity .65s ease, transform .65s ease;
+    /* Scroll reveal — content visible by default, animation is enhancement only */
+    .reveal { opacity: 1; transform: none; }
+    .reveal.animate-in {
+      animation: fadeUp .65s ease both;
     }
-    .reveal.visible { opacity: 1; transform: translateY(0); }
 
-    /* ── Accessibility: no motion → show everything immediately ── */
+    /* ── Accessibility: no motion ── */
     @media (prefers-reduced-motion: reduce) {
       .hero-badge, .hero h1, .hero-sub, .hero-actions, .hero-trust,
-      .hero-visual, .signal-row, .hero-mini-stats, .reveal {
+      .hero-visual, .signal-row, .hero-mini-stats {
         animation: none !important;
         opacity: 1 !important;
         transform: none !important;
-        transition: none !important;
       }
     }
 
@@ -674,28 +671,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Close drawer when clicking a nav link (anchor links)
   lDrawer?.querySelectorAll('a[href^="#"]').forEach(a => a.addEventListener('click', closeLDrawer));
 
-  // ── Scroll reveal (Intersection Observer) ──
+  // ── Scroll reveal — purely cosmetic, content already visible ──
   const revealObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (!entry.isIntersecting) return;
-      const delay = parseInt(entry.target.dataset.delay || 0);
-      setTimeout(() => entry.target.classList.add('visible'), delay);
+      entry.target.classList.add('animate-in');
       revealObserver.unobserve(entry.target);
     });
-  }, { threshold: 0.05 }); // lower threshold so elements near viewport edge still trigger
-
+  }, { threshold: 0.05 });
   document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
-
-  // Safety net: force all content visible after hero animations complete.
-  // Covers reduced-motion browsers, slow devices, and observer edge cases.
-  function revealAll() {
-    document.querySelectorAll(
-      '.hero-badge, .hero h1, .hero-sub, .hero-actions, .hero-trust, .hero-visual, .signal-row, .hero-mini-stats'
-    ).forEach(el => { el.style.opacity = '1'; el.style.transform = 'none'; });
-    document.querySelectorAll('.reveal').forEach(el => el.classList.add('visible'));
-  }
-  setTimeout(revealAll, 800);    // fast fallback — well after hero animations finish
-  window.addEventListener('scroll', revealAll, { once: true }); // also trigger on first scroll
 
   // ── Count-up for stats ──
   function countUp(el, target, suffix, duration) {
