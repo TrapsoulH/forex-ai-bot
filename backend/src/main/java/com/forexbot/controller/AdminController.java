@@ -98,4 +98,64 @@ public class AdminController {
         }
         return "redirect:/admin/users";
     }
+
+    // ── Delete user ───────────────────────────────────────────────────────────
+
+    @PostMapping("/users/{id}/delete")
+    public String deleteUser(@PathVariable Long id,
+                             @AuthenticationPrincipal UserDetails principal,
+                             RedirectAttributes ra) {
+        try {
+            userService.deleteUser(id, principal.getUsername());
+            ra.addFlashAttribute("success", "User deleted.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
+    // ── Resend invite ─────────────────────────────────────────────────────────
+
+    @PostMapping("/users/{id}/resend-invite")
+    public String resendInvite(@PathVariable Long id,
+                               @AuthenticationPrincipal UserDetails principal,
+                               RedirectAttributes ra) {
+        try {
+            userService.resendInvite(id, principal.getUsername());
+            ra.addFlashAttribute("success", "Invite resent.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
+    // ── Unlock account ────────────────────────────────────────────────────────
+
+    @PostMapping("/users/{id}/unlock")
+    public String unlockUser(@PathVariable Long id,
+                             @AuthenticationPrincipal UserDetails principal,
+                             RedirectAttributes ra) {
+        try {
+            userService.unlockUser(id, principal.getUsername());
+            ra.addFlashAttribute("success", "Account unlocked.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
+    // ── Force password reset ──────────────────────────────────────────────────
+
+    @PostMapping("/users/{id}/reset-password")
+    public String resetPassword(@PathVariable Long id,
+                                @AuthenticationPrincipal UserDetails principal,
+                                RedirectAttributes ra) {
+        try {
+            userService.sendPasswordReset(id, principal.getUsername());
+            ra.addFlashAttribute("success", "Password reset email sent.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
 }

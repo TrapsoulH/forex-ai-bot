@@ -230,6 +230,66 @@ public class UserService {
         log.info("Admin changed role of {} → {}", user.getUsername(), newRole);
     }
 
+    // ── Admin actions ─────────────────────────────────────────────────────────
+
+    @Transactional
+    public void deleteUser(Long userId, String requestingUsername) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        if (user.getUsername().equals(requestingUsername)) {
+            throw new IllegalArgumentException("You cannot delete your own account");
+        }
+        long adminCount = userRepository.countByRole(User.Role.ADMIN);
+        if (user.getRole() == User.Role.ADMIN && adminCount <= 1) {
+            throw new IllegalArgumentException("Cannot delete the last admin account");
+        }
+        tokenRepository.deleteAllByUserId(userId);
+        userRepository.delete(user);
+        log.info("Admin {} deleted user {} ({})", requestingUsername, user.getUsername(), user.getEmail());
+    }
+
+    @Transactional
+    public void resendInvite(Long userId, String requestingUsername) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        tokenRepository.deleteAllByUserId(userId);
+        String rawToken = UUID.randomUUID().toString();
+        PasswordResetToken token = PasswordResetToken.builder()
+                .token(rawToken)
+                .user(user)
+                .expiresAt(Instant.now().plus(72, ChronoUnit.HOURS))
+                .build();
+        tokenRepository.save(token);
+        emailService.sendInvite(user.getEmail(), rawToken);
+        log.info("Admin {} resent invite to {}", requestingUsername, user.getEmail());
+    }
+
+    @Transactional
+    public void unlockUser(Long userId, String requestingUsername) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setLockedUntil(null);
+        user.setFailedLoginAttempts(0);
+        userRepository.save(user);
+        log.info("Admin {} unlocked account {}", requestingUsername, user.getUsername());
+    }
+
+    @Transactional
+    public void sendPasswordReset(Long userId, String requestingUsername) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        tokenRepository.deleteAllByUserId(userId);
+        String rawToken = UUID.randomUUID().toString();
+        PasswordResetToken token = PasswordResetToken.builder()
+                .token(rawToken)
+                .user(user)
+                .expiresAt(Instant.now().plus(24, ChronoUnit.HOURS))
+                .build();
+        tokenRepository.save(token);
+        emailService.sendPasswordReset(user.getEmail(), rawToken);
+        log.info("Admin {} triggered password reset for {}", requestingUsername, user.getEmail());
+    }
+
     // ── Account settings ──────────────────────────────────────────────────────
 
     public User findByUsername(String username) {

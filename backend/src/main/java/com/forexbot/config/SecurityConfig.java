@@ -93,7 +93,7 @@ public class SecurityConfig {
                 .permitAll()
             )
             .csrf(csrf -> csrf
-                .ignoringRequestMatchers("/api/**")
+                .ignoringRequestMatchers("/api/**", "/invite/accept")
             );
 
         if (isOAuth2Enabled()) {
