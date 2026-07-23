@@ -6,8 +6,7 @@ import com.forexbot.repository.UserRepository;
 import com.forexbot.service.UserService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -46,7 +45,7 @@ public class AdminController {
     public String inviteUser(@Valid @ModelAttribute("form") InviteUserForm form,
                              BindingResult result,
                              Model model,
-                             @AuthenticationPrincipal UserDetails principal,
+                             Authentication authentication,
                              RedirectAttributes ra) {
         if (result.hasErrors()) {
             model.addAttribute("users",       userService.findAllUsers());
@@ -58,8 +57,8 @@ public class AdminController {
             return "admin/users";
         }
         try {
-            User invited = userService.inviteUser(form.getEmail(), form.getRole(), principal.getUsername());
-            log.info("Admin {} invited {}", principal.getUsername(), invited.getEmail());
+            User invited = userService.inviteUser(form.getEmail(), form.getRole(), authentication.getName());
+            log.info("Admin {} invited {}", authentication.getName(), invited.getEmail());
             ra.addFlashAttribute("success",
                 "Invite sent to " + invited.getEmail() + ". They'll receive an email to set up their account.");
         } catch (IllegalArgumentException e) {
@@ -72,10 +71,10 @@ public class AdminController {
 
     @PostMapping("/users/{id}/toggle")
     public String toggleUser(@PathVariable Long id,
-                             @AuthenticationPrincipal UserDetails principal,
+                             Authentication authentication,
                              RedirectAttributes ra) {
         try {
-            userService.toggleUserEnabled(id, principal.getUsername());
+            userService.toggleUserEnabled(id, authentication.getName());
             ra.addFlashAttribute("success", "User status updated.");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
@@ -88,10 +87,10 @@ public class AdminController {
     @PostMapping("/users/{id}/role")
     public String changeRole(@PathVariable Long id,
                              @RequestParam User.Role role,
-                             @AuthenticationPrincipal UserDetails principal,
+                             Authentication authentication,
                              RedirectAttributes ra) {
         try {
-            userService.changeUserRole(id, role, principal.getUsername());
+            userService.changeUserRole(id, role, authentication.getName());
             ra.addFlashAttribute("success", "Role updated.");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
@@ -103,10 +102,10 @@ public class AdminController {
 
     @PostMapping("/users/{id}/delete")
     public String deleteUser(@PathVariable Long id,
-                             @AuthenticationPrincipal UserDetails principal,
+                             Authentication authentication,
                              RedirectAttributes ra) {
         try {
-            userService.deleteUser(id, principal.getUsername());
+            userService.deleteUser(id, authentication.getName());
             ra.addFlashAttribute("success", "User deleted.");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
@@ -118,10 +117,10 @@ public class AdminController {
 
     @PostMapping("/users/{id}/resend-invite")
     public String resendInvite(@PathVariable Long id,
-                               @AuthenticationPrincipal UserDetails principal,
+                               Authentication authentication,
                                RedirectAttributes ra) {
         try {
-            userService.resendInvite(id, principal.getUsername());
+            userService.resendInvite(id, authentication.getName());
             ra.addFlashAttribute("success", "Invite resent.");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
@@ -133,10 +132,10 @@ public class AdminController {
 
     @PostMapping("/users/{id}/unlock")
     public String unlockUser(@PathVariable Long id,
-                             @AuthenticationPrincipal UserDetails principal,
+                             Authentication authentication,
                              RedirectAttributes ra) {
         try {
-            userService.unlockUser(id, principal.getUsername());
+            userService.unlockUser(id, authentication.getName());
             ra.addFlashAttribute("success", "Account unlocked.");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
@@ -148,10 +147,10 @@ public class AdminController {
 
     @PostMapping("/users/{id}/reset-password")
     public String resetPassword(@PathVariable Long id,
-                                @AuthenticationPrincipal UserDetails principal,
+                                Authentication authentication,
                                 RedirectAttributes ra) {
         try {
-            userService.sendPasswordReset(id, principal.getUsername());
+            userService.sendPasswordReset(id, authentication.getName());
             ra.addFlashAttribute("success", "Password reset email sent.");
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", e.getMessage());
