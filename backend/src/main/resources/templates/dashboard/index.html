@@ -865,8 +865,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let _histRange = '1h';
 
-  loadHistory();
-
   window.setHistRange = function(el, range) {
     _histRange = range;
     document.querySelectorAll('.hist-chip').forEach(c => c.classList.remove('active'));
@@ -987,6 +985,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       });
   };
+
+  // Load signal history on page open (default: last 1h)
+  loadHistory();
 
   // ── Soft refresh toast (replaces hard 30s reload) ──────────
   // Toast only appears if SSE never connected (fallback for unsupported browsers / proxy issues)
