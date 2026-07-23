@@ -56,7 +56,7 @@ class HybridStrategy:
                 technical_signal="HOLD",
                 ml_signal="HOLD",
                 ml_confidence=0.0,
-                reason="Technical indicators show no clear trend — holding",
+                reason=self._technical_hold_reason(df),
             )
 
         # ── ML gate ───────────────────────────────────────────────────────────
@@ -147,6 +147,47 @@ class HybridStrategy:
         if bearish_trend and rsi_sell and macd_bearish:
             return "SELL"
         return "HOLD"
+
+    def _technical_hold_reason(self, df: pd.DataFrame) -> str:
+        """Plain-English explanation of exactly why the technical gate returned HOLD."""
+        from indicators.technical import add_all_indicators
+        enriched = add_all_indicators(df)
+        last = enriched.iloc[-1]
+
+        ema_f = f"ema_{settings.ema_fast}"
+        ema_s = f"ema_{settings.ema_slow}"
+
+        bullish_trend = last[ema_f] > last[ema_s] and last["close"] > last["ema_200"]
+        bearish_trend = last[ema_f] < last[ema_s] and last["close"] < last["ema_200"]
+        rsi = round(float(last["rsi"]), 1)
+        macd_hist = float(last["macd_hist"])
+
+        if not bullish_trend and not bearish_trend:
+            return f"Price is between EMAs — no clear trend direction yet (RSI {rsi})"
+
+        if bearish_trend:
+            if rsi <= 35:
+                return (f"Bearish trend confirmed but RSI oversold ({rsi}) — "
+                        f"waiting for RSI to recover above 35 before entering SELL")
+            if rsi >= settings.rsi_overbought:
+                return (f"Bearish trend but RSI overbought ({rsi}) — "
+                        f"momentum not aligned for SELL entry")
+            if macd_hist >= 0:
+                return f"Bearish trend, RSI {rsi} in range — MACD histogram not negative yet, holding"
+            return f"Bearish trend — not all conditions met for SELL (RSI {rsi})"
+
+        if bullish_trend:
+            if rsi >= 65:
+                return (f"Bullish trend confirmed but RSI overbought ({rsi}) — "
+                        f"waiting for RSI to pull back below 65 before entering BUY")
+            if rsi <= settings.rsi_oversold:
+                return (f"Bullish trend but RSI oversold ({rsi}) — "
+                        f"momentum not aligned for BUY entry")
+            if macd_hist <= 0:
+                return f"Bullish trend, RSI {rsi} in range — MACD histogram not positive yet, holding"
+            return f"Bullish trend — not all conditions met for BUY (RSI {rsi})"
+
+        return f"Mixed signals — no entry (RSI {rsi})"
 
     def _ml_signal(self, df_ohlcv: pd.DataFrame) -> tuple[int, float]:
         if not self._predictor.is_trained():
