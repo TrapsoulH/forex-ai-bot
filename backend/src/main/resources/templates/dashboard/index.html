@@ -960,7 +960,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ? '<span style="color:#34d399;margin-left:4px"><i data-lucide="check-circle" style="width:13px;height:13px"></i></span>'
             : '';
           const reason = s.reason ?? '—';
-          const reasonShort = reason.length > 60 ? reason.slice(0, 57) + '…' : reason;
           return `<tr>
             <td style="white-space:nowrap;color:#64748b;font-size:.8rem">${time}</td>
             <td style="font-weight:600;color:#e2e8f0">${s.symbol}</td>
@@ -970,7 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <span class="badge ${badgeCls(s.direction)}">${s.direction}</span>${acted}
             </td>
             <td style="font-size:.82rem;color:#94a3b8">${conf}</td>
-            <td style="font-size:.78rem;color:#475569;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${reason.replace(/"/g,'&quot;')}">${reasonShort}</td>
+            <td style="font-size:.78rem;color:#475569">${reason}</td>
           </tr>`;
         }).join('');
         lucide.createIcons();
