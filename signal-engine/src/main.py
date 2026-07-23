@@ -155,6 +155,79 @@ async def scan():
     return results
 
 
+@app.get("/market-overview")
+async def market_overview():
+    """
+    Return current indicator snapshot for all symbols in one call.
+    Used by the dashboard Market Overview cards.
+    No DB writes — read-only snapshot of the latest candle state.
+    """
+    from indicators.technical import add_all_indicators
+    results = {}
+
+    for symbol in _strategies:
+        try:
+            df = await _fetch_candles(symbol)
+            enriched = add_all_indicators(df)
+            last = enriched.iloc[-1]
+
+            strategy = _strategies[symbol]
+            result = strategy.evaluate(df)
+
+            ml_label, ml_conf = (
+                strategy._predictor.predict(df)
+                if strategy._predictor.is_trained()
+                else (0, 0.0)
+            )
+            ml_sig = {1: "BUY", -1: "SELL", 0: "HOLD"}.get(ml_label, "HOLD")
+
+            rsi_val = round(float(last["rsi"]), 1)
+            ema_fast = float(last[f"ema_{settings.ema_fast}"])
+            ema_slow = float(last[f"ema_{settings.ema_slow}"])
+            ema_200  = float(last["ema_200"])
+            close    = float(last["close"])
+            macd_hist = float(last["macd_hist"])
+
+            # Derive plain-English state labels
+            if ema_fast > ema_slow and close > ema_200:
+                trend = "bullish"
+            elif ema_fast < ema_slow and close < ema_200:
+                trend = "bearish"
+            else:
+                trend = "ranging"
+
+            macd_state = "positive" if macd_hist > 0 else "negative" if macd_hist < 0 else "flat"
+
+            # RSI zone label
+            if rsi_val < 35:
+                rsi_zone = "oversold"
+            elif rsi_val > 65:
+                rsi_zone = "overbought"
+            else:
+                rsi_zone = "neutral"
+
+            results[symbol] = {
+                "symbol":      symbol,
+                "signal":      result.signal,
+                "trend":       trend,
+                "rsi":         rsi_val,
+                "rsi_zone":    rsi_zone,
+                "macd":        macd_state,
+                "ema_cross":   "fast_above" if ema_fast > ema_slow else "fast_below",
+                "price_vs_200": "above" if close > ema_200 else "below",
+                "technical":   result.technical_signal,
+                "ml":          ml_sig,
+                "ml_confidence": round(ml_conf * 100, 1),
+                "reason":      result.reason,
+                "error":       None,
+            }
+        except Exception as e:
+            logger.warning(f"[{symbol}] market-overview error: {e}")
+            results[symbol] = {"symbol": symbol, "error": str(e)}
+
+    return results
+
+
 @app.get("/debug/{symbol}")
 async def debug(symbol: str):
     """Show raw indicator values and both gate decisions for a symbol."""

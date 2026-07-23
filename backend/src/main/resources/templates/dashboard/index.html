@@ -26,6 +26,31 @@
     .hist-stat-val.h-sell{color:#f87171}
     .hist-dt,.hist-sel{background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:8px;padding:5px 10px;font-size:.78rem;outline:none;cursor:pointer}
     .hist-dt:focus,.hist-sel:focus{border-color:#3b82f6}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .mo-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px;transition:border-color .2s}
+    .mo-card.bull{border-left:3px solid #10b981}
+    .mo-card.bear{border-left:3px solid #ef4444}
+    .mo-card.ranging{border-left:3px solid #475569}
+    .mo-card.fired{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.04)}
+    .mo-card.fired.sell-fired{border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.04)}
+    .mo-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .mo-sym{font-size:1rem;font-weight:700;color:#f1f5f9;font-family:monospace}
+    .mo-bias{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600}
+    .mo-bias.bull{background:rgba(16,185,129,.15);color:#34d399}
+    .mo-bias.bear{background:rgba(239,68,68,.15);color:#f87171}
+    .mo-bias.ranging{background:rgba(255,255,255,.06);color:#64748b}
+    .mo-row{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:.8rem}
+    .mo-row:last-of-type{border-bottom:none}
+    .mo-lbl{color:#64748b}
+    .mo-val{display:flex;align-items:center;gap:6px;font-weight:600;color:#e2e8f0}
+    .mo-pill{padding:1px 8px;border-radius:20px;font-size:.72rem;font-weight:600}
+    .mo-pill.green{background:rgba(16,185,129,.15);color:#34d399}
+    .mo-pill.red{background:rgba(239,68,68,.15);color:#f87171}
+    .mo-pill.amber{background:rgba(245,158,11,.15);color:#fbbf24}
+    .mo-pill.grey{background:rgba(255,255,255,.07);color:#64748b}
+    .mo-rsi-track{flex:1;height:4px;background:rgba(255,255,255,.08);border-radius:2px;margin:0 8px;overflow:hidden}
+    .mo-rsi-fill{height:100%;border-radius:2px;transition:width .3s}
+    .mo-summary{margin-top:10px;padding:8px 10px;border-radius:8px;font-size:.75rem;line-height:1.45;color:#94a3b8;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05)}
   </style>
   <!-- CSRF token for JS-rendered close forms -->
   <meta name="_csrf" th:content="${_csrf.token}"/>
@@ -172,6 +197,26 @@
            th:style="${marketOpen} ? 'display:none' : ''"
            style="font-size:.7rem;color:#92400e;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:6px;padding:4px 10px;text-align:center;white-space:nowrap">
         Market closed · auto-enables Sunday ~23:00 SAST
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Market Overview ── -->
+  <div id="market-overview-section" style="margin-bottom:32px" class="au1">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div class="section-title" style="margin-bottom:0"><i data-lucide="globe"></i> Market overview</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span id="mo-updated" style="font-size:.75rem;color:#475569">—</span>
+        <button id="mo-refresh-btn" onclick="loadMarketOverview()" style="background:none;border:1px solid rgba(255,255,255,.1);color:#64748b;border-radius:8px;padding:4px 12px;font-size:.78rem;cursor:pointer;display:flex;align-items:center;gap:5px">
+          <i data-lucide="refresh-cw" style="width:12px;height:12px"></i> Refresh
+        </button>
+      </div>
+    </div>
+    <div id="mo-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px">
+      <!-- cards rendered by JS -->
+      <div style="grid-column:1/-1;text-align:center;padding:32px;color:#475569;font-size:.85rem">
+        <i data-lucide="loader" style="width:18px;height:18px;animation:spin 1s linear infinite"></i>
+        <p style="margin:8px 0 0">Loading market state…</p>
       </div>
     </div>
   </div>
@@ -752,8 +797,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sse.addEventListener('signal', () => {
       fetch('/api/live/signals').then(r => r.json()).then(renderSignalsTable).catch(console.error);
-      // Also refresh stats so bot button stays in sync
       fetch('/api/live/stats').then(r => r.json()).then(updateStatCards).catch(console.error);
+      // Refresh market overview cards on each new signal
+      loadMarketOverview();
     });
 
     sse.addEventListener('trade', () => {
@@ -785,6 +831,139 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('sse-live', () => {
     document.getElementById('refresh-toast')?.remove();
   });
+
+  // ── Market overview ─────────────────────────────────────────
+
+  function rsiColor(rsi) {
+    if (rsi < 35) return { fill: '#ef4444', cls: 'red' };
+    if (rsi > 65) return { fill: '#f59e0b', cls: 'amber' };
+    return { fill: '#10b981', cls: 'green' };
+  }
+
+  function renderMarketOverview(data) {
+    const grid = document.getElementById('mo-grid');
+    const symbols = Object.keys(data).filter(k => !data[k].error);
+    const errored = Object.keys(data).filter(k => data[k].error);
+
+    if (!symbols.length) {
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:32px;color:#f87171;font-size:.85rem">Signal engine unavailable — make sure it\'s running.</div>';
+      return;
+    }
+
+    const order = ['EURUSD','GBPUSD','AUDUSD','USDJPY'];
+    const sorted = [...symbols].sort((a,b) => order.indexOf(a) - order.indexOf(b));
+
+    grid.innerHTML = sorted.map(sym => {
+      const d = data[sym];
+      const rc = rsiColor(d.rsi);
+      const rsiPct = Math.min(100, Math.max(0, d.rsi));
+      const biasIcon = d.trend === 'bullish' ? 'trending-up' : d.trend === 'bearish' ? 'trending-down' : 'minus';
+      const fired = d.signal === 'BUY' || d.signal === 'SELL';
+      const cardCls = `mo-card ${d.trend}${fired ? (d.signal === 'BUY' ? ' fired' : ' fired sell-fired') : ''}`;
+
+      const emaCrossLabel = d.ema_cross === 'fast_above'
+        ? '<span class="mo-pill green">Fast above slow</span>'
+        : '<span class="mo-pill red">Fast below slow</span>';
+
+      const price200Label = d.price_vs_200 === 'above'
+        ? '<span class="mo-pill green">Above EMA 200</span>'
+        : '<span class="mo-pill red">Below EMA 200</span>';
+
+      const macdLabel = d.macd === 'positive'
+        ? '<span class="mo-pill green">Positive</span>'
+        : d.macd === 'negative'
+          ? '<span class="mo-pill red">Negative</span>'
+          : '<span class="mo-pill grey">Flat</span>';
+
+      const rsiZoneLabel = d.rsi_zone === 'oversold'
+        ? '<span class="mo-pill red">Oversold</span>'
+        : d.rsi_zone === 'overbought'
+          ? '<span class="mo-pill amber">Overbought</span>'
+          : '<span class="mo-pill green">Neutral</span>';
+
+      const mlConf = d.ml_confidence;
+      const aiLabel = d.ml === 'HOLD'
+        ? `<span class="mo-pill grey">HOLD · ${mlConf}%</span>`
+        : d.ml === 'BUY'
+          ? `<span class="mo-pill green">BUY · ${mlConf}%</span>`
+          : `<span class="mo-pill red">SELL · ${mlConf}%</span>`;
+
+      const summaryBg = fired
+        ? (d.signal === 'BUY' ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.08)')
+        : 'rgba(255,255,255,.03)';
+      const summaryColor = fired
+        ? (d.signal === 'BUY' ? '#34d399' : '#f87171')
+        : '#94a3b8';
+
+      return `<div class="${cardCls}">
+        <div class="mo-hdr">
+          <span class="mo-sym">${sym.slice(0,3)}/${sym.slice(3)}</span>
+          <span class="mo-bias ${d.trend}">
+            <i data-lucide="${biasIcon}" style="width:12px;height:12px"></i>
+            ${d.trend.charAt(0).toUpperCase() + d.trend.slice(1)}
+          </span>
+        </div>
+        <div class="mo-row">
+          <span class="mo-lbl">Trend (EMA)</span>
+          <span class="mo-val">${price200Label}</span>
+        </div>
+        <div class="mo-row">
+          <span class="mo-lbl">RSI (14) · ${d.rsi}</span>
+          <span class="mo-val" style="flex:1;justify-content:flex-end">
+            ${rsiZoneLabel}
+            <div class="mo-rsi-track"><div class="mo-rsi-fill" style="width:${rsiPct}%;background:${rc.fill}"></div></div>
+            <span style="font-size:.75rem;color:${rc.fill};min-width:28px;text-align:right">${d.rsi}</span>
+          </span>
+        </div>
+        <div class="mo-row">
+          <span class="mo-lbl">MACD</span>
+          <span class="mo-val">${macdLabel}</span>
+        </div>
+        <div class="mo-row">
+          <span class="mo-lbl">EMA cross</span>
+          <span class="mo-val">${emaCrossLabel}</span>
+        </div>
+        <div class="mo-row">
+          <span class="mo-lbl">AI gate</span>
+          <span class="mo-val">${aiLabel}</span>
+        </div>
+        <div class="mo-summary" style="background:${summaryBg};color:${summaryColor};border-color:${fired ? summaryColor + '33' : 'rgba(255,255,255,.05)'}">
+          ${d.reason}
+        </div>
+      </div>`;
+    }).join('') + errored.map(sym =>
+      `<div class="mo-card ranging" style="opacity:.5">
+        <div class="mo-hdr"><span class="mo-sym">${sym}</span></div>
+        <p style="font-size:.78rem;color:#64748b;margin:0">Failed to load</p>
+      </div>`
+    ).join('');
+
+    lucide.createIcons();
+
+    const now = new Date().toLocaleTimeString('en-ZA', { timeZone:'Africa/Johannesburg', hour:'2-digit', minute:'2-digit', hour12:false });
+    document.getElementById('mo-updated').textContent = `H1 · updated ${now} SAST`;
+  }
+
+  window.loadMarketOverview = function() {
+    const grid = document.getElementById('mo-grid');
+    const btn  = document.getElementById('mo-refresh-btn');
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:28px;color:#64748b;font-size:.85rem"><i data-lucide="loader" style="width:16px;height:16px;animation:spin 1s linear infinite"></i> Refreshing…</div>';
+    if (btn) btn.disabled = true;
+    lucide.createIcons();
+
+    fetch('/api/live/market-overview')
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(data => renderMarketOverview(data))
+      .catch(() => {
+        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:28px;color:#f87171;font-size:.85rem">Could not reach signal engine. Is it running?</div>';
+      })
+      .finally(() => { if (btn) btn.disabled = false; });
+  };
+
+  loadMarketOverview();
+
+  // Auto-refresh market overview on each SSE signal event
+  document.addEventListener('mo-refresh', loadMarketOverview);
 
   // ── Signal history tab ──────────────────────────────────────
 

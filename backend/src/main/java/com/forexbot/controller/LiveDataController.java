@@ -5,13 +5,14 @@ import com.forexbot.repository.SignalRepository;
 import com.forexbot.repository.TradeRepository;
 import com.forexbot.service.MarketHoursService;
 import com.forexbot.service.SignalPollerService;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import org.springframework.data.domain.PageRequest;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,7 +35,6 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/api/live")
-@RequiredArgsConstructor
 public class LiveDataController {
 
     // Always display timestamps in SAST (UTC+2) regardless of server timezone.
@@ -42,10 +42,23 @@ public class LiveDataController {
     private static final DateTimeFormatter FMT =
             DateTimeFormatter.ofPattern("dd MMM HH:mm:ss").withZone(SAST);
 
-    private final SignalRepository   signalRepository;
-    private final TradeRepository    tradeRepository;
-    private final SignalPollerService pollerService;
-    private final MarketHoursService  marketHours;
+    private final SignalRepository    signalRepository;
+    private final TradeRepository     tradeRepository;
+    private final SignalPollerService  pollerService;
+    private final MarketHoursService   marketHours;
+    private final WebClient            signalClient;
+
+    public LiveDataController(SignalRepository signalRepository,
+                              TradeRepository tradeRepository,
+                              SignalPollerService pollerService,
+                              MarketHoursService marketHours,
+                              @Qualifier("signalWebClient") WebClient signalClient) {
+        this.signalRepository = signalRepository;
+        this.tradeRepository  = tradeRepository;
+        this.pollerService    = pollerService;
+        this.marketHours      = marketHours;
+        this.signalClient     = signalClient;
+    }
 
     // ── /api/live/signals ──────────────────────────────────────────────────
 
@@ -102,6 +115,17 @@ public class LiveDataController {
         m.put("botEnabled",     pollerService.isEnabled());
         m.put("marketOpen",     marketHours.isOpen());
         return m;
+    }
+
+    // ── /api/live/market-overview ─────────────────────────────────────────
+
+    @GetMapping("/market-overview")
+    public Mono<Object> marketOverview() {
+        return signalClient.get()
+                .uri("/market-overview")
+                .retrieve()
+                .bodyToMono(Object.class)
+                .onErrorReturn(java.util.Map.of("error", "Signal engine unavailable"));
     }
 
     // ── /api/signals/history ──────────────────────────────────────────────
