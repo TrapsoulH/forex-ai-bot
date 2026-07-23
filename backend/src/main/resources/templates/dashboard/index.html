@@ -778,11 +778,16 @@ document.addEventListener('DOMContentLoaded', () => {
           : '<span class="mo-pill green">Neutral</span>';
 
       const mlConf = d.ml_confidence;
+      // Conflict: ML direction opposes the technical trend (e.g. AI says BUY on a bearish card)
+      const mlConflicts = (d.ml === 'BUY' && d.trend === 'bearish')
+                       || (d.ml === 'SELL' && d.trend === 'bullish');
       const aiLabel = d.ml === 'HOLD'
         ? `<span class="mo-pill grey">HOLD · ${mlConf}%</span>`
-        : d.ml === 'BUY'
-          ? `<span class="mo-pill green">BUY · ${mlConf}%</span>`
-          : `<span class="mo-pill red">SELL · ${mlConf}%</span>`;
+        : mlConflicts
+          ? `<span class="mo-pill amber">Mixed · ${mlConf}%</span>`
+          : d.ml === 'BUY'
+            ? `<span class="mo-pill green">BUY · ${mlConf}%</span>`
+            : `<span class="mo-pill red">SELL · ${mlConf}%</span>`;
 
       const summaryBg = fired
         ? (d.signal === 'BUY' ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.08)')
