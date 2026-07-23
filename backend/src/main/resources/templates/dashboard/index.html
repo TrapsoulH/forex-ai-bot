@@ -867,7 +867,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.getElementById(id).textContent = '…';
     });
 
-    fetch('/api/signals/history?' + params)
+    fetch('/api/live/signals/history?' + params)
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(data => {
         document.getElementById('hstat-total').textContent  = data.total;

@@ -37,10 +37,10 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LiveDataController {
 
-    // Use the JVM default zone (= Windows system timezone, SAST on this machine).
-    // When deployed to GCP (Phase 5) this will be UTC — cloud timestamps are always UTC.
+    // Always display timestamps in SAST (UTC+2) regardless of server timezone.
+    private static final ZoneId SAST = ZoneId.of("Africa/Johannesburg");
     private static final DateTimeFormatter FMT =
-            DateTimeFormatter.ofPattern("dd MMM HH:mm:ss").withZone(ZoneId.systemDefault());
+            DateTimeFormatter.ofPattern("dd MMM HH:mm:ss").withZone(SAST);
 
     private final SignalRepository   signalRepository;
     private final TradeRepository    tradeRepository;
