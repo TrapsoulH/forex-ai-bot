@@ -8,7 +8,10 @@ import com.forexbot.service.SignalPollerService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import org.springframework.data.domain.PageRequest;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -99,6 +102,47 @@ public class LiveDataController {
         m.put("botEnabled",     pollerService.isEnabled());
         m.put("marketOpen",     marketHours.isOpen());
         return m;
+    }
+
+    // ── /api/signals/history ──────────────────────────────────────────────
+
+    @GetMapping("/signals/history")
+    public Map<String, Object> signalHistory(
+            @RequestParam String from,
+            @RequestParam String to,
+            @RequestParam(required = false) String symbol) {
+
+        Instant fromI = Instant.parse(from);
+        Instant toI   = Instant.parse(to);
+        var limit = PageRequest.of(0, 500);
+
+        List<com.forexbot.model.Signal> signals = (symbol != null && !symbol.isBlank())
+                ? signalRepository.findBySymbolAndDateRange(symbol, fromI, toI, limit).getContent()
+                : signalRepository.findByDateRange(fromI, toI, limit).getContent();
+
+        long buyCount  = signals.stream().filter(s -> "BUY".equals(s.getDirection())).count();
+        long sellCount = signals.stream().filter(s -> "SELL".equals(s.getDirection())).count();
+        long actedOn   = signals.stream().filter(com.forexbot.model.Signal::isActedOn).count();
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("total",     signals.size());
+        result.put("buyCount",  buyCount);
+        result.put("sellCount", sellCount);
+        result.put("actedOn",   actedOn);
+        result.put("signals",   signals.stream().map(s -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("createdAt",       s.getCreatedAt() != null ? s.getCreatedAt().toString() : null);
+            m.put("symbol",          s.getSymbol());
+            m.put("direction",       s.getDirection());
+            m.put("confidence",      pct(s.getConfidence()));
+            m.put("technicalSignal", s.getTechnicalSignal());
+            m.put("mlSignal",        s.getMlSignal());
+            m.put("reason",          s.getReason());
+            m.put("actedOn",         s.isActedOn());
+            return m;
+        }).collect(Collectors.toList()));
+
+        return result;
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────

@@ -9,6 +9,24 @@
   <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}"/>
   <link rel="stylesheet" th:href="@{/css/app.css}"/>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    .sig-tabs{display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:16px;gap:0;flex-wrap:wrap}
+    .sig-tab{background:none;border:none;border-bottom:2px solid transparent;color:#64748b;font-size:.88rem;font-weight:600;padding:8px 16px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s;margin-bottom:-1px;white-space:nowrap}
+    .sig-tab.active{color:#f1f5f9;border-bottom-color:#3b82f6}
+    .sig-tab:hover:not(.active){color:#94a3b8}
+    .hist-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+    .hist-chip{padding:4px 14px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.1);color:#64748b;background:transparent;transition:all .15s;white-space:nowrap;user-select:none}
+    .hist-chip.active{background:rgba(59,130,246,.15);border-color:rgba(59,130,246,.4);color:#60a5fa}
+    .hist-chip:hover:not(.active){border-color:rgba(255,255,255,.2);color:#94a3b8}
+    .hist-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:14px}
+    .hist-stat{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 14px}
+    .hist-stat-lbl{display:block;font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#64748b;margin-bottom:4px}
+    .hist-stat-val{font-size:1.35rem;font-weight:800;color:#f1f5f9}
+    .hist-stat-val.h-buy{color:#34d399}
+    .hist-stat-val.h-sell{color:#f87171}
+    .hist-dt,.hist-sel{background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:8px;padding:5px 10px;font-size:.78rem;outline:none;cursor:pointer}
+    .hist-dt:focus,.hist-sel:focus{border-color:#3b82f6}
+  </style>
   <!-- CSRF token for JS-rendered close forms -->
   <meta name="_csrf" th:content="${_csrf.token}"/>
   <meta name="_csrf_param" th:content="${_csrf.parameterName}"/>
@@ -352,66 +370,158 @@
     </div>
   </div>
 
-  <!-- ── Recent Signals ── -->
+  <!-- ── Signals: Live feed + Signal history ── -->
   <div style="margin-bottom:32px" class="au3">
-    <div class="section-title"><i data-lucide="zap"></i> Recent Signals</div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-      <input id="signals-search" type="search" placeholder="Search signals…"
-             style="background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:8px;padding:6px 12px;font-size:.8rem;width:220px;outline:none"
-             oninput="filterTable('signals-table',this.value)"/>
+
+    <!-- Tab bar -->
+    <div class="sig-tabs">
+      <button id="tab-btn-live" class="sig-tab active" onclick="switchSigTab('live')">
+        <i data-lucide="zap" style="width:14px;height:14px"></i> Live feed
+      </button>
+      <button id="tab-btn-history" class="sig-tab" onclick="switchSigTab('history')">
+        <i data-lucide="clock" style="width:14px;height:14px"></i> Signal history
+      </button>
+      <div style="flex:1"></div>
+      <!-- search only shown on live tab -->
+      <div id="live-search-wrap" style="padding-bottom:4px">
+        <input id="signals-search" type="search" placeholder="Search signals…"
+               style="background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:8px;padding:6px 12px;font-size:.8rem;width:200px;outline:none"
+               oninput="filterTable('signals-table',this.value)"/>
+      </div>
     </div>
-    <div class="table-wrap">
-      <table id="signals-table">
-        <thead>
-          <tr>
-            <th>Time</th>
-            <th>Symbol</th>
-            <th>Signal</th>
-            <th>Confidence</th>
-            <th>Technical</th>
-            <th>AI</th>
-            <th>Acted</th>
-            <th>Reason</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr th:each="s : ${recentSignals}">
-            <td style="white-space:nowrap;color:#64748b;font-size:.8rem"
-                th:text="${#temporals.format(s.createdAt, 'dd MMM HH:mm:ss', 'Africa/Johannesburg')}">—</td>
-            <td style="font-weight:600;color:#e2e8f0" th:text="${s.symbol}">EURUSD</td>
-            <td>
-              <span class="badge"
-                    th:classappend="${s.direction == 'BUY'} ? 'b-buy' : (${s.direction == 'SELL'} ? 'b-sell' : 'b-hold')"
-                    th:text="${s.direction}">HOLD</span>
-            </td>
-            <td th:text="${s.mlConfidence != null and s.mlConfidence.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(s.mlConfidence * 100, 1, 1) + '%' : (s.confidence != null and s.confidence.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(s.confidence * 100, 1, 1) + '%' : '—')}">—</td>
-            <td>
-              <span class="badge"
-                    th:classappend="${s.technicalSignal == 'BUY'} ? 'b-buy' : (${s.technicalSignal == 'SELL'} ? 'b-sell' : 'b-hold')"
-                    th:text="${s.technicalSignal}">—</span>
-            </td>
-            <td>
-              <span class="badge"
-                    th:classappend="${s.mlSignal == 'BUY'} ? 'b-buy' : (${s.mlSignal == 'SELL'} ? 'b-sell' : 'b-hold')"
-                    th:text="${s.mlSignal}">—</span>
-            </td>
-            <td style="text-align:center">
-              <span th:if="${s.actedOn}" style="color:#34d399"><i data-lucide="check-circle" style="width:15px;height:15px"></i></span>
-              <span th:unless="${s.actedOn}" style="color:#1e3a5f">—</span>
-            </td>
-            <td style="font-size:.78rem;color:#475569;max-width:220px" th:text="${s.reason}">—</td>
-          </tr>
-          <tr th:if="${#lists.isEmpty(recentSignals)}">
-            <td colspan="8">
-              <div class="empty-state">
-                <i data-lucide="radio"></i>
-                <p>No signals yet — waiting for next candle close</p>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+
+    <!-- ── Live feed panel ── -->
+    <div id="panel-live">
+      <div class="table-wrap">
+        <table id="signals-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Symbol</th>
+              <th>Signal</th>
+              <th>Confidence</th>
+              <th>Technical</th>
+              <th>AI</th>
+              <th>Acted</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="s : ${recentSignals}">
+              <td style="white-space:nowrap;color:#64748b;font-size:.8rem"
+                  th:text="${#temporals.format(s.createdAt, 'dd MMM HH:mm:ss', 'Africa/Johannesburg')}">—</td>
+              <td style="font-weight:600;color:#e2e8f0" th:text="${s.symbol}">EURUSD</td>
+              <td>
+                <span class="badge"
+                      th:classappend="${s.direction == 'BUY'} ? 'b-buy' : (${s.direction == 'SELL'} ? 'b-sell' : 'b-hold')"
+                      th:text="${s.direction}">HOLD</span>
+              </td>
+              <td th:text="${s.mlConfidence != null and s.mlConfidence.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(s.mlConfidence * 100, 1, 1) + '%' : (s.confidence != null and s.confidence.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(s.confidence * 100, 1, 1) + '%' : '—')}">—</td>
+              <td>
+                <span class="badge"
+                      th:classappend="${s.technicalSignal == 'BUY'} ? 'b-buy' : (${s.technicalSignal == 'SELL'} ? 'b-sell' : 'b-hold')"
+                      th:text="${s.technicalSignal}">—</span>
+              </td>
+              <td>
+                <span class="badge"
+                      th:classappend="${s.mlSignal == 'BUY'} ? 'b-buy' : (${s.mlSignal == 'SELL'} ? 'b-sell' : 'b-hold')"
+                      th:text="${s.mlSignal}">—</span>
+              </td>
+              <td style="text-align:center">
+                <span th:if="${s.actedOn}" style="color:#34d399"><i data-lucide="check-circle" style="width:15px;height:15px"></i></span>
+                <span th:unless="${s.actedOn}" style="color:#1e3a5f">—</span>
+              </td>
+              <td style="font-size:.78rem;color:#475569;max-width:220px" th:text="${s.reason}">—</td>
+            </tr>
+            <tr th:if="${#lists.isEmpty(recentSignals)}">
+              <td colspan="8">
+                <div class="empty-state">
+                  <i data-lucide="radio"></i>
+                  <p>No signals yet — waiting for next candle close</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
+
+    <!-- ── Signal history panel ── -->
+    <div id="panel-history" style="display:none">
+
+      <!-- Filters row -->
+      <div class="hist-filters">
+        <span class="hist-chip active" data-range="1h"        onclick="setHistRange(this,'1h')">1h</span>
+        <span class="hist-chip"        data-range="4h"        onclick="setHistRange(this,'4h')">4h</span>
+        <span class="hist-chip"        data-range="today"     onclick="setHistRange(this,'today')">Today</span>
+        <span class="hist-chip"        data-range="yesterday" onclick="setHistRange(this,'yesterday')">Yesterday</span>
+        <span class="hist-chip"        data-range="custom"    onclick="setHistRange(this,'custom')">Custom range</span>
+        <!-- Custom date/time pickers — hidden until "Custom range" chosen -->
+        <div id="hist-custom-pickers" style="display:none;align-items:center;gap:6px;flex-wrap:wrap">
+          <input type="datetime-local" id="hist-from" class="hist-dt" onchange="loadHistory()"/>
+          <span style="color:#64748b;font-size:.8rem">→</span>
+          <input type="datetime-local" id="hist-to" class="hist-dt" onchange="loadHistory()"/>
+        </div>
+        <!-- Symbol filter -->
+        <div style="margin-left:auto">
+          <select id="hist-symbol" class="hist-sel" onchange="loadHistory()">
+            <option value="">All symbols</option>
+            <option>EURUSD</option>
+            <option>GBPUSD</option>
+            <option>XAUUSD</option>
+            <option>USDJPY</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="hist-stats">
+        <div class="hist-stat">
+          <span class="hist-stat-lbl">Scanned</span>
+          <span id="hstat-total" class="hist-stat-val">—</span>
+        </div>
+        <div class="hist-stat">
+          <span class="hist-stat-lbl">BUY fired</span>
+          <span id="hstat-buy" class="hist-stat-val h-buy">—</span>
+        </div>
+        <div class="hist-stat">
+          <span class="hist-stat-lbl">SELL fired</span>
+          <span id="hstat-sell" class="hist-stat-val h-sell">—</span>
+        </div>
+        <div class="hist-stat">
+          <span class="hist-stat-lbl">Acted on</span>
+          <span id="hstat-acted" class="hist-stat-val">—</span>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap">
+        <table id="hist-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Symbol</th>
+              <th>Technical</th>
+              <th>AI</th>
+              <th>Final</th>
+              <th>Confidence</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody id="hist-tbody">
+            <tr>
+              <td colspan="7">
+                <div class="empty-state">
+                  <i data-lucide="clock"></i>
+                  <p>Select a time range to load signal history</p>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <!-- ── Trade History ── -->
@@ -675,6 +785,141 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('sse-live', () => {
     document.getElementById('refresh-toast')?.remove();
   });
+
+  // ── Signal history tab ──────────────────────────────────────
+
+  let _histRange = '1h';
+
+  window.switchSigTab = function(tab) {
+    const live = tab === 'live';
+    document.getElementById('panel-live').style.display    = live ? '' : 'none';
+    document.getElementById('panel-history').style.display = live ? 'none' : '';
+    document.getElementById('tab-btn-live').classList.toggle('active', live);
+    document.getElementById('tab-btn-history').classList.toggle('active', !live);
+    document.getElementById('live-search-wrap').style.display = live ? '' : 'none';
+    if (!live) loadHistory();
+  };
+
+  window.setHistRange = function(el, range) {
+    _histRange = range;
+    document.querySelectorAll('.hist-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    const pickers = document.getElementById('hist-custom-pickers');
+    if (range === 'custom') {
+      pickers.style.display = 'flex';
+      // Pre-fill pickers with sensible defaults (last 24h)
+      const now = new Date();
+      const yesterday = new Date(now - 86400000);
+      document.getElementById('hist-to').value   = toLocalDT(now);
+      document.getElementById('hist-from').value = toLocalDT(yesterday);
+    } else {
+      pickers.style.display = 'none';
+      loadHistory();
+    }
+  };
+
+  function toLocalDT(d) {
+    // Returns "YYYY-MM-DDTHH:MM" in local time for datetime-local input
+    const pad = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  function getHistDates() {
+    const now = new Date();
+    switch (_histRange) {
+      case '1h':
+        return { from: new Date(now - 3600000).toISOString(), to: now.toISOString() };
+      case '4h':
+        return { from: new Date(now - 14400000).toISOString(), to: now.toISOString() };
+      case 'today': {
+        const start = new Date(now); start.setHours(0,0,0,0);
+        return { from: start.toISOString(), to: now.toISOString() };
+      }
+      case 'yesterday': {
+        const end = new Date(now); end.setHours(0,0,0,0);
+        const start = new Date(end); start.setDate(start.getDate()-1);
+        return { from: start.toISOString(), to: end.toISOString() };
+      }
+      case 'custom': {
+        const f = document.getElementById('hist-from').value;
+        const t = document.getElementById('hist-to').value;
+        if (!f || !t) return null;
+        return { from: new Date(f).toISOString(), to: new Date(t).toISOString() };
+      }
+      default: return null;
+    }
+  }
+
+  window.loadHistory = function() {
+    const dates = getHistDates();
+    if (!dates) return;
+    const symbol = document.getElementById('hist-symbol').value;
+    const params = new URLSearchParams({ from: dates.from, to: dates.to });
+    if (symbol) params.set('symbol', symbol);
+
+    // Loading state
+    document.getElementById('hist-tbody').innerHTML =
+      '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:28px;font-size:.85rem">' +
+      '<span style="display:inline-flex;align-items:center;gap:8px">' +
+      '<span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;animation:pulseDot 1s ease-in-out infinite"></span>' +
+      'Loading…</span></td></tr>';
+    ['hstat-total','hstat-buy','hstat-sell','hstat-acted'].forEach(id => {
+      document.getElementById(id).textContent = '…';
+    });
+
+    fetch('/api/signals/history?' + params)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(data => {
+        document.getElementById('hstat-total').textContent  = data.total;
+        document.getElementById('hstat-buy').textContent    = data.buyCount;
+        document.getElementById('hstat-sell').textContent   = data.sellCount;
+        document.getElementById('hstat-acted').textContent  = data.actedOn;
+
+        const tbody = document.getElementById('hist-tbody');
+        if (!data.signals?.length) {
+          tbody.innerHTML =
+            '<tr><td colspan="7"><div class="empty-state">' +
+            '<i data-lucide="search"></i><p>No signals found in this time range</p>' +
+            '</div></td></tr>';
+          lucide.createIcons(); return;
+        }
+
+        tbody.innerHTML = data.signals.map(s => {
+          const time = s.createdAt
+            ? new Date(s.createdAt).toLocaleString('en-ZA', {
+                timeZone:'Africa/Johannesburg',
+                day:'2-digit', month:'short',
+                hour:'2-digit', minute:'2-digit', hour12:false
+              })
+            : '—';
+          const conf = s.confidence && parseFloat(s.confidence) > 0 ? s.confidence + '%' : '—';
+          const acted = s.actedOn
+            ? '<span style="color:#34d399"><i data-lucide="check-circle" style="width:14px;height:14px"></i></span>'
+            : '';
+          return `<tr>
+            <td style="white-space:nowrap;color:#64748b;font-size:.8rem">${time}</td>
+            <td style="font-weight:600;color:#e2e8f0">${s.symbol}</td>
+            <td><span class="badge ${badgeCls(s.technicalSignal)}">${s.technicalSignal ?? '—'}</span></td>
+            <td><span class="badge ${badgeCls(s.mlSignal)}">${s.mlSignal ?? '—'}</span></td>
+            <td>
+              <span class="badge ${badgeCls(s.direction)}">${s.direction}</span>
+              ${acted}
+            </td>
+            <td>${conf}</td>
+            <td style="font-size:.78rem;color:#475569;max-width:240px">${s.reason ?? '—'}</td>
+          </tr>`;
+        }).join('');
+        lucide.createIcons();
+      })
+      .catch(() => {
+        document.getElementById('hist-tbody').innerHTML =
+          '<tr><td colspan="7" style="text-align:center;color:#f87171;padding:24px;font-size:.85rem">' +
+          'Failed to load — please try again.</td></tr>';
+        ['hstat-total','hstat-buy','hstat-sell','hstat-acted'].forEach(id => {
+          document.getElementById(id).textContent = '—';
+        });
+      });
+  };
 
   // ── Soft refresh toast (replaces hard 30s reload) ──────────
   // Toast only appears if SSE never connected (fallback for unsupported browsers / proxy issues)
