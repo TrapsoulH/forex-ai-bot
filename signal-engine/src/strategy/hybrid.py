@@ -71,7 +71,7 @@ class HybridStrategy:
                 technical_signal=tech,
                 ml_signal="HOLD",
                 ml_confidence=ml_conf,
-                reason=f"AI predicts no trade ({pct(ml_conf)} sure) — Technical gate: {tech}",
+                reason=f"AI sees no trade ({pct(ml_conf)}) — chart says {tech}",
             )
 
         if tech != ml_sig:
@@ -81,7 +81,7 @@ class HybridStrategy:
                 technical_signal=tech,
                 ml_signal=ml_sig,
                 ml_confidence=ml_conf,
-                reason=f"Gates disagree — Technical: {tech}, AI predicts: {ml_sig} ({pct(ml_conf)})",
+                reason=f"Split opinion — chart: {tech}, AI: {ml_sig} ({pct(ml_conf)})",
             )
 
         if ml_conf < self.MIN_CONFIDENCE:
@@ -91,7 +91,7 @@ class HybridStrategy:
                 technical_signal=tech,
                 ml_signal=ml_sig,
                 ml_confidence=ml_conf,
-                reason=f"AI confidence too low to trade ({pct(ml_conf)} — minimum {pct(self.MIN_CONFIDENCE)} required)",
+                reason=f"AI not confident enough ({pct(ml_conf)}, need {pct(self.MIN_CONFIDENCE)})",
             )
 
         logger.info(f"[{self.symbol}] Signal: {tech} | AI conf: {pct(ml_conf)}")
@@ -101,7 +101,7 @@ class HybridStrategy:
             technical_signal=tech,
             ml_signal=ml_sig,
             ml_confidence=ml_conf,
-            reason=f"Signal confirmed — Technical & AI agree: {tech} ({pct(ml_conf)} confidence)",
+            reason=f"{tech} — chart & AI agree ({pct(ml_conf)})",
         )
 
     def _technical_signal(self, df: pd.DataFrame) -> Signal:
@@ -163,31 +163,27 @@ class HybridStrategy:
         macd_hist = float(last["macd_hist"])
 
         if not bullish_trend and not bearish_trend:
-            return f"Price is between EMAs — no clear trend direction yet (RSI {rsi})"
+            return f"No trend — price between moving averages (RSI {rsi})"
 
         if bearish_trend:
             if rsi <= 35:
-                return (f"Bearish trend confirmed but RSI oversold ({rsi}) — "
-                        f"waiting for RSI to recover above 35 before entering SELL")
+                return f"Downtrend but RSI oversold ({rsi}) — waiting before entering SELL"
             if rsi >= settings.rsi_overbought:
-                return (f"Bearish trend but RSI overbought ({rsi}) — "
-                        f"momentum not aligned for SELL entry")
+                return f"Downtrend but RSI too high ({rsi}) — not a good SELL entry"
             if macd_hist >= 0:
-                return f"Bearish trend, RSI {rsi} in range — MACD histogram not negative yet, holding"
-            return f"Bearish trend — not all conditions met for SELL (RSI {rsi})"
+                return f"Downtrend, RSI {rsi} — MACD not confirmed yet"
+            return f"Downtrend — not all conditions met (RSI {rsi})"
 
         if bullish_trend:
             if rsi >= 65:
-                return (f"Bullish trend confirmed but RSI overbought ({rsi}) — "
-                        f"waiting for RSI to pull back below 65 before entering BUY")
+                return f"Uptrend but RSI overbought ({rsi}) — waiting before entering BUY"
             if rsi <= settings.rsi_oversold:
-                return (f"Bullish trend but RSI oversold ({rsi}) — "
-                        f"momentum not aligned for BUY entry")
+                return f"Uptrend but RSI too low ({rsi}) — not a good BUY entry"
             if macd_hist <= 0:
-                return f"Bullish trend, RSI {rsi} in range — MACD histogram not positive yet, holding"
-            return f"Bullish trend — not all conditions met for BUY (RSI {rsi})"
+                return f"Uptrend, RSI {rsi} — MACD not confirmed yet"
+            return f"Uptrend — not all conditions met (RSI {rsi})"
 
-        return f"Mixed signals — no entry (RSI {rsi})"
+        return f"Mixed signals — holding (RSI {rsi})"
 
     def _ml_signal(self, df_ohlcv: pd.DataFrame) -> tuple[int, float]:
         if not self._predictor.is_trained():

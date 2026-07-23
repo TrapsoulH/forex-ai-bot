@@ -155,10 +155,11 @@ public class LiveDataController {
         result.put("actedOn",   actedOn);
         result.put("signals",   signals.stream().map(s -> {
             Map<String, Object> m = new LinkedHashMap<>();
-            m.put("createdAt",       s.getCreatedAt() != null ? s.getCreatedAt().toString() : null);
+            m.put("createdAt",       s.getCreatedAt() != null ? FMT.format(s.getCreatedAt()) : null);
             m.put("symbol",          s.getSymbol());
             m.put("direction",       s.getDirection());
             m.put("confidence",      pct(s.getConfidence()));
+            m.put("mlConfidence",    pct(s.getMlConfidence()));
             m.put("technicalSignal", s.getTechnicalSignal());
             m.put("mlSignal",        s.getMlSignal());
             m.put("reason",          s.getReason());

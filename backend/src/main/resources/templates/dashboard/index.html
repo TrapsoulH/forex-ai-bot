@@ -872,11 +872,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const pickers = document.getElementById('hist-custom-pickers');
     if (range === 'custom') {
       pickers.style.display = 'flex';
-      // Pre-fill pickers with sensible defaults (last 24h)
+      // Pre-fill pickers with sensible defaults (last 24h) then load immediately
       const now = new Date();
       const yesterday = new Date(now - 86400000);
       document.getElementById('hist-to').value   = toLocalDT(now);
       document.getElementById('hist-from').value = toLocalDT(yesterday);
+      loadHistory();
     } else {
       pickers.style.display = 'none';
       loadHistory();
@@ -950,28 +951,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         tbody.innerHTML = data.signals.map(s => {
-          const time = s.createdAt
-            ? new Date(s.createdAt).toLocaleString('en-ZA', {
-                timeZone:'Africa/Johannesburg',
-                day:'2-digit', month:'short',
-                hour:'2-digit', minute:'2-digit', hour12:false
-              })
-            : '—';
-          const conf = s.confidence && parseFloat(s.confidence) > 0 ? s.confidence + '%' : '—';
+          const time = s.createdAt ?? '—';
+          const confVal = (s.confidence && parseFloat(s.confidence) > 0)
+            ? s.confidence
+            : (s.mlConfidence && parseFloat(s.mlConfidence) > 0 ? s.mlConfidence : null);
+          const conf = confVal ? confVal + '%' : '—';
           const acted = s.actedOn
-            ? '<span style="color:#34d399"><i data-lucide="check-circle" style="width:14px;height:14px"></i></span>'
+            ? '<span style="color:#34d399;margin-left:4px"><i data-lucide="check-circle" style="width:13px;height:13px"></i></span>'
             : '';
+          const reason = s.reason ?? '—';
           return `<tr>
             <td style="white-space:nowrap;color:#64748b;font-size:.8rem">${time}</td>
             <td style="font-weight:600;color:#e2e8f0">${s.symbol}</td>
             <td><span class="badge ${badgeCls(s.technicalSignal)}">${s.technicalSignal ?? '—'}</span></td>
             <td><span class="badge ${badgeCls(s.mlSignal)}">${s.mlSignal ?? '—'}</span></td>
-            <td>
-              <span class="badge ${badgeCls(s.direction)}">${s.direction}</span>
-              ${acted}
+            <td style="white-space:nowrap">
+              <span class="badge ${badgeCls(s.direction)}">${s.direction}</span>${acted}
             </td>
-            <td>${conf}</td>
-            <td style="font-size:.78rem;color:#475569;max-width:240px">${s.reason ?? '—'}</td>
+            <td style="font-size:.82rem;color:#94a3b8">${conf}</td>
+            <td style="font-size:.78rem;color:#475569">${reason}</td>
           </tr>`;
         }).join('');
         lucide.createIcons();
