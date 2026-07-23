@@ -10,11 +10,7 @@
   <link rel="stylesheet" th:href="@{/css/app.css}"/>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
   <style>
-    .sig-tabs{display:flex;align-items:center;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:16px;gap:0;flex-wrap:wrap}
-    .sig-tab{background:none;border:none;border-bottom:2px solid transparent;color:#64748b;font-size:.88rem;font-weight:600;padding:8px 16px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:color .15s;margin-bottom:-1px;white-space:nowrap}
-    .sig-tab.active{color:#f1f5f9;border-bottom-color:#3b82f6}
-    .sig-tab:hover:not(.active){color:#94a3b8}
-    .hist-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.hist-filters{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
     .hist-chip{padding:4px 14px;border-radius:20px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.1);color:#64748b;background:transparent;transition:all .15s;white-space:nowrap;user-select:none}
     .hist-chip.active{background:rgba(59,130,246,.15);border-color:rgba(59,130,246,.4);color:#60a5fa}
     .hist-chip:hover:not(.active){border-color:rgba(255,255,255,.2);color:#94a3b8}
@@ -415,84 +411,12 @@
     </div>
   </div>
 
-  <!-- ── Signals: Live feed + Signal history ── -->
+  <!-- ── Signal history ── -->
   <div style="margin-bottom:32px" class="au3">
 
-    <!-- Tab bar -->
-    <div class="sig-tabs">
-      <button id="tab-btn-live" class="sig-tab active" onclick="switchSigTab('live')">
-        <i data-lucide="zap" style="width:14px;height:14px"></i> Live feed
-      </button>
-      <button id="tab-btn-history" class="sig-tab" onclick="switchSigTab('history')">
-        <i data-lucide="clock" style="width:14px;height:14px"></i> Signal history
-      </button>
-      <div style="flex:1"></div>
-      <!-- search only shown on live tab -->
-      <div id="live-search-wrap" style="padding-bottom:4px">
-        <input id="signals-search" type="search" placeholder="Search signals…"
-               style="background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:8px;padding:6px 12px;font-size:.8rem;width:200px;outline:none"
-               oninput="filterTable('signals-table',this.value)"/>
-      </div>
-    </div>
+    <div class="section-title" style="margin-bottom:16px"><i data-lucide="clock"></i> Signal history</div>
 
-    <!-- ── Live feed panel ── -->
-    <div id="panel-live">
-      <div class="table-wrap">
-        <table id="signals-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Symbol</th>
-              <th>Signal</th>
-              <th>Confidence</th>
-              <th>Technical</th>
-              <th>AI</th>
-              <th>Acted</th>
-              <th>Reason</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr th:each="s : ${recentSignals}">
-              <td style="white-space:nowrap;color:#64748b;font-size:.8rem"
-                  th:text="${#temporals.format(s.createdAt, 'dd MMM HH:mm:ss', 'Africa/Johannesburg')}">—</td>
-              <td style="font-weight:600;color:#e2e8f0" th:text="${s.symbol}">EURUSD</td>
-              <td>
-                <span class="badge"
-                      th:classappend="${s.direction == 'BUY'} ? 'b-buy' : (${s.direction == 'SELL'} ? 'b-sell' : 'b-hold')"
-                      th:text="${s.direction}">HOLD</span>
-              </td>
-              <td th:text="${s.mlConfidence != null and s.mlConfidence.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(s.mlConfidence * 100, 1, 1) + '%' : (s.confidence != null and s.confidence.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? #numbers.formatDecimal(s.confidence * 100, 1, 1) + '%' : '—')}">—</td>
-              <td>
-                <span class="badge"
-                      th:classappend="${s.technicalSignal == 'BUY'} ? 'b-buy' : (${s.technicalSignal == 'SELL'} ? 'b-sell' : 'b-hold')"
-                      th:text="${s.technicalSignal}">—</span>
-              </td>
-              <td>
-                <span class="badge"
-                      th:classappend="${s.mlSignal == 'BUY'} ? 'b-buy' : (${s.mlSignal == 'SELL'} ? 'b-sell' : 'b-hold')"
-                      th:text="${s.mlSignal}">—</span>
-              </td>
-              <td style="text-align:center">
-                <span th:if="${s.actedOn}" style="color:#34d399"><i data-lucide="check-circle" style="width:15px;height:15px"></i></span>
-                <span th:unless="${s.actedOn}" style="color:#1e3a5f">—</span>
-              </td>
-              <td style="font-size:.78rem;color:#475569;max-width:220px" th:text="${s.reason}">—</td>
-            </tr>
-            <tr th:if="${#lists.isEmpty(recentSignals)}">
-              <td colspan="8">
-                <div class="empty-state">
-                  <i data-lucide="radio"></i>
-                  <p>No signals yet — waiting for next candle close</p>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- ── Signal history panel ── -->
-    <div id="panel-history" style="display:none">
+    <div id="panel-history">
 
       <!-- Filters row -->
       <div class="hist-filters">
@@ -701,33 +625,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return dir === 'BUY' ? 'b-buy' : dir === 'SELL' ? 'b-sell' : 'b-hold';
   }
 
-  function renderSignalsTable(signals) {
-    const tbody = document.querySelector('#signals-table tbody');
-    if (!tbody) return;
-    if (!signals?.length) {
-      tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
-        <i data-lucide="radio"></i><p>No signals yet — waiting for next candle close</p>
-      </div></td></tr>`;
-      lucide.createIcons(); return;
-    }
-    tbody.innerHTML = signals.map(s => `
-      <tr>
-        <td style="white-space:nowrap;color:#64748b;font-size:.8rem">${s.createdAt ? new Date(s.createdAt).toLocaleString('en-ZA', {timeZone:'Africa/Johannesburg',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}) : '—'}</td>
-        <td style="font-weight:600;color:#e2e8f0">${s.symbol}</td>
-        <td><span class="badge ${badgeCls(s.direction)}">${s.direction}</span></td>
-        <td>${(s.mlConfidence != null && parseFloat(s.mlConfidence) > 0) ? s.mlConfidence + '%' : (s.confidence != null && parseFloat(s.confidence) > 0 ? s.confidence + '%' : '—')}</td>
-        <td><span class="badge ${badgeCls(s.technicalSignal)}">${s.technicalSignal ?? '—'}</span></td>
-        <td><span class="badge ${badgeCls(s.mlSignal)}">${s.mlSignal ?? '—'}</span></td>
-        <td style="text-align:center">
-          ${s.actedOn
-            ? '<span style="color:#34d399"><i data-lucide="check-circle" style="width:15px;height:15px"></i></span>'
-            : '<span style="color:#1e3a5f">—</span>'}
-        </td>
-        <td style="font-size:.78rem;color:#475569;max-width:220px">${s.reason ?? '—'}</td>
-      </tr>`).join('');
-    lucide.createIcons();
-  }
-
   function renderPositionsTable(positions) {
     const tbody = document.querySelector('#positions-table tbody');
     if (!tbody) return;
@@ -796,10 +693,9 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     sse.addEventListener('signal', () => {
-      fetch('/api/live/signals').then(r => r.json()).then(renderSignalsTable).catch(console.error);
       fetch('/api/live/stats').then(r => r.json()).then(updateStatCards).catch(console.error);
-      // Refresh market overview cards on each new signal
       loadMarketOverview();
+      loadHistory();
     });
 
     sse.addEventListener('trade', () => {
@@ -965,19 +861,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Auto-refresh market overview on each SSE signal event
   document.addEventListener('mo-refresh', loadMarketOverview);
 
-  // ── Signal history tab ──────────────────────────────────────
+  // ── Signal history ──────────────────────────────────────────
 
   let _histRange = '1h';
 
-  window.switchSigTab = function(tab) {
-    const live = tab === 'live';
-    document.getElementById('panel-live').style.display    = live ? '' : 'none';
-    document.getElementById('panel-history').style.display = live ? 'none' : '';
-    document.getElementById('tab-btn-live').classList.toggle('active', live);
-    document.getElementById('tab-btn-history').classList.toggle('active', !live);
-    document.getElementById('live-search-wrap').style.display = live ? '' : 'none';
-    if (!live) loadHistory();
-  };
+  loadHistory();
 
   window.setHistRange = function(el, range) {
     _histRange = range;
