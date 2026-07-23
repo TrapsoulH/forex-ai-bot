@@ -6,8 +6,7 @@ import com.forexbot.model.User;
 import com.forexbot.service.UserService;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -26,8 +25,8 @@ public class AccountController {
     }
 
     @GetMapping
-    public String accountPage(@AuthenticationPrincipal UserDetails principal, Model model) {
-        User user = userService.findByUsername(principal.getUsername());
+    public String accountPage(Authentication authentication, Model model) {
+        User user = userService.findByUsername(authentication.getName());
         UpdateProfileForm profileForm = new UpdateProfileForm();
         profileForm.setFullName(user.getFullName() != null ? user.getFullName() : "");
         profileForm.setPhone(user.getPhone() != null ? user.getPhone() : "");
@@ -38,20 +37,20 @@ public class AccountController {
     }
 
     @PostMapping("/profile")
-    public String updateProfile(@AuthenticationPrincipal UserDetails principal,
+    public String updateProfile(Authentication authentication,
                                 @Valid @ModelAttribute("profileForm") UpdateProfileForm form,
                                 BindingResult result,
                                 Model model,
                                 RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
-            User user = userService.findByUsername(principal.getUsername());
+            User user = userService.findByUsername(authentication.getName());
             model.addAttribute("user", user);
             model.addAttribute("passwordForm", new ChangePasswordForm());
             model.addAttribute("profileError", true);
             return "account/settings";
         }
         try {
-            userService.updateProfile(principal.getUsername(), form);
+            userService.updateProfile(authentication.getName(), form);
             redirectAttrs.addFlashAttribute("success", "Profile updated successfully.");
         } catch (IllegalArgumentException e) {
             redirectAttrs.addFlashAttribute("error", e.getMessage());
@@ -60,20 +59,20 @@ public class AccountController {
     }
 
     @PostMapping("/password")
-    public String changePassword(@AuthenticationPrincipal UserDetails principal,
+    public String changePassword(Authentication authentication,
                                  @Valid @ModelAttribute("passwordForm") ChangePasswordForm form,
                                  BindingResult result,
                                  Model model,
                                  RedirectAttributes redirectAttrs) {
         if (result.hasErrors()) {
-            User user = userService.findByUsername(principal.getUsername());
+            User user = userService.findByUsername(authentication.getName());
             model.addAttribute("user", user);
             model.addAttribute("profileForm", buildProfileForm(user));
             model.addAttribute("passwordError", true);
             return "account/settings";
         }
         try {
-            userService.changePassword(principal.getUsername(), form);
+            userService.changePassword(authentication.getName(), form);
             redirectAttrs.addFlashAttribute("success", "Password updated successfully.");
         } catch (IllegalArgumentException e) {
             redirectAttrs.addFlashAttribute("passwordFormError", e.getMessage());
