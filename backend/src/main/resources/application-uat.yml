@@ -18,6 +18,7 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
             scope: email, profile
+            redirect-uri: "https://blue-ocean-hub.com/login/oauth2/code/google"
 
   thymeleaf:
     cache: true
