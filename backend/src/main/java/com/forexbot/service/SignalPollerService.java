@@ -15,6 +15,8 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -93,6 +95,19 @@ public class SignalPollerService {
 
         if (dto == null) return;
 
+        // ── Deduplication: skip storing if nothing changed ────────────────────
+        // BUY/SELL always saves (could act on it). HOLD only saves when the
+        // reason changes — avoids hundreds of identical HOLD rows per day.
+        if ("HOLD".equals(dto.getSignal())) {
+            Signal last = signalRepository.findTopBySymbolOrderByCreatedAtDesc(symbol);
+            if (last != null
+                    && "HOLD".equals(last.getDirection())
+                    && Objects.equals(last.getReason(), dto.getReason())) {
+                log.debug("[{}] Duplicate HOLD — skipping save (reason unchanged)", symbol);
+                return; // nothing changed, don't write or broadcast
+            }
+        }
+
         Signal saved = signalRepository.save(Signal.builder()
                 .symbol(dto.getSymbol())
                 .direction(dto.getSignal())
@@ -111,11 +126,18 @@ public class SignalPollerService {
             tradeService.openTrade(symbol, dto.getSignal(), dto.getConfidence(), saved.getId());
             saved.setActedOn(true);
             signalRepository.save(saved);
-            // Push trade event so dashboard refreshes positions + stat cards
             sseService.broadcastTrade();
         }
 
-        // Always push signal event so the signals table updates live
         sseService.broadcastSignal();
+    }
+
+    // ── Retention: delete HOLD signals older than 7 days ─────────────────────
+    // Runs every Sunday at 02:00 SAST. BUY/SELL signals are kept indefinitely.
+    @Scheduled(cron = "0 0 2 * * SUN", zone = "Africa/Johannesburg")
+    public void cleanOldHoldSignals() {
+        Instant cutoff = Instant.now().minus(Duration.ofDays(7));
+        int deleted = signalRepository.deleteOldHoldSignals(cutoff);
+        log.info("Signal retention: deleted {} HOLD signals older than 7 days", deleted);
     }
 }

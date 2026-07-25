@@ -16,6 +16,15 @@ public interface SignalRepository extends JpaRepository<Signal, Long> {
 
     List<Signal> findBySymbolOrderByCreatedAtDesc(String symbol);
 
+    // Most recent signal for a symbol — used for deduplication
+    Signal findTopBySymbolOrderByCreatedAtDesc(String symbol);
+
+    // Retention cleanup — delete old HOLD signals (noise reduction)
+    @Query("DELETE FROM Signal s WHERE s.direction = 'HOLD' AND s.createdAt < :cutoff")
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    int deleteOldHoldSignals(@Param("cutoff") Instant cutoff);
+
     // ── Weekly review queries ──────────────────────────────────────────────────
 
     List<Signal> findByCreatedAtAfter(Instant since);
