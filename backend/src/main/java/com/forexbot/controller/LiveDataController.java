@@ -148,12 +148,42 @@ public class LiveDataController {
         long sellCount = signals.stream().filter(s -> "SELL".equals(s.getDirection())).count();
         long actedOn   = signals.stream().filter(com.forexbot.model.Signal::isActedOn).count();
 
+        // Per-symbol breakdown for summary cards
+        List<String> symbolOrder = List.of("EURUSD", "GBPUSD", "AUDUSD", "USDJPY");
+        Map<String, Map<String, Object>> breakdown = new LinkedHashMap<>();
+        signals.stream()
+                .map(com.forexbot.model.Signal::getSymbol)
+                .distinct()
+                .sorted((a, b) -> {
+                    int ai = symbolOrder.indexOf(a), bi = symbolOrder.indexOf(b);
+                    return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+                })
+                .forEach(sym -> {
+                    List<com.forexbot.model.Signal> ss = signals.stream()
+                            .filter(s -> sym.equals(s.getSymbol()))
+                            .collect(Collectors.toList());
+                    long sBuy  = ss.stream().filter(s -> "BUY".equals(s.getDirection())).count();
+                    long sSell = ss.stream().filter(s -> "SELL".equals(s.getDirection())).count();
+                    long sHold = ss.stream().filter(s -> "HOLD".equals(s.getDirection())).count();
+                    String lastReason = ss.isEmpty() ? null : ss.get(0).getReason();
+                    String lastDir    = ss.isEmpty() ? null : ss.get(0).getDirection();
+                    Map<String, Object> b = new LinkedHashMap<>();
+                    b.put("total",      ss.size());
+                    b.put("buyCount",   sBuy);
+                    b.put("sellCount",  sSell);
+                    b.put("holdCount",  sHold);
+                    b.put("lastReason", lastReason);
+                    b.put("lastDir",    lastDir);
+                    breakdown.put(sym, b);
+                });
+
         Map<String, Object> result = new LinkedHashMap<>();
-        result.put("total",     signals.size());
-        result.put("buyCount",  buyCount);
-        result.put("sellCount", sellCount);
-        result.put("actedOn",   actedOn);
-        result.put("signals",   signals.stream().map(s -> {
+        result.put("total",           signals.size());
+        result.put("buyCount",        buyCount);
+        result.put("sellCount",       sellCount);
+        result.put("actedOn",         actedOn);
+        result.put("symbolBreakdown", breakdown);
+        result.put("signals",         signals.stream().map(s -> {
             Map<String, Object> m = new LinkedHashMap<>();
             m.put("createdAt",       s.getCreatedAt() != null ? FMT.format(s.getCreatedAt()) : null);
             m.put("symbol",          s.getSymbol());

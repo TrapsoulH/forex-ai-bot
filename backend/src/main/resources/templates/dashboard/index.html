@@ -22,6 +22,15 @@
     .hist-stat-val.h-sell{color:#f87171}
     .hist-dt,.hist-sel{background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:8px;padding:5px 10px;font-size:.78rem;outline:none;cursor:pointer}
     .hist-dt:focus,.hist-sel:focus{border-color:#3b82f6}
+    .hsym-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px}
+    .hsym-card.buy-fired{border-left:3px solid #10b981;background:rgba(16,185,129,.04)}
+    .hsym-card.sell-fired{border-left:3px solid #ef4444;background:rgba(239,68,68,.04)}
+    .hsym-name{font-size:.82rem;font-weight:700;color:#f1f5f9;font-family:monospace;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+    .hsym-row{display:flex;justify-content:space-between;font-size:.78rem;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+    .hsym-row:last-child{border-bottom:none}
+    .hsym-lbl{color:#64748b}
+    .hsym-val{font-weight:600;color:#e2e8f0}
+    .hsym-reason{font-size:.74rem;color:#475569;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06)}
     @keyframes spin{to{transform:rotate(360deg)}}
     .mo-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 18px;transition:border-color .2s}
     .mo-card.bull{border-left:3px solid #10b981}
@@ -431,64 +440,32 @@
           <span style="color:#64748b;font-size:.8rem">→</span>
           <input type="datetime-local" id="hist-to" class="hist-dt" onchange="loadHistory()"/>
         </div>
-        <!-- Symbol filter -->
-        <div style="margin-left:auto">
-          <select id="hist-symbol" class="hist-sel" onchange="loadHistory()">
-            <option value="">All symbols</option>
-            <option>EURUSD</option>
-            <option>GBPUSD</option>
-            <option>AUDUSD</option>
-            <option>USDJPY</option>
-          </select>
+      </div>
+
+      <!-- Summary cards (shown for preset ranges) -->
+      <div id="hist-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px"></div>
+
+      <!-- Table (shown only for custom range) -->
+      <div id="hist-table-wrap" style="display:none">
+        <!-- Stats row for custom -->
+        <div class="hist-stats" style="margin-bottom:14px">
+          <div class="hist-stat"><span class="hist-stat-lbl">Total signals</span><span id="hstat-total" class="hist-stat-val">—</span></div>
+          <div class="hist-stat"><span class="hist-stat-lbl">BUY fired</span><span id="hstat-buy" class="hist-stat-val h-buy">—</span></div>
+          <div class="hist-stat"><span class="hist-stat-lbl">SELL fired</span><span id="hstat-sell" class="hist-stat-val h-sell">—</span></div>
+          <div class="hist-stat"><span class="hist-stat-lbl">Acted on</span><span id="hstat-acted" class="hist-stat-val">—</span></div>
+        </div>
+        <div class="table-wrap">
+          <table id="hist-table">
+            <thead>
+              <tr>
+                <th>Time</th><th>Symbol</th><th>Technical</th><th>AI</th><th>Final</th><th>Confidence</th><th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="hist-tbody"></tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Stats row -->
-      <div class="hist-stats">
-        <div class="hist-stat">
-          <span class="hist-stat-lbl">Scanned</span>
-          <span id="hstat-total" class="hist-stat-val">—</span>
-        </div>
-        <div class="hist-stat">
-          <span class="hist-stat-lbl">BUY fired</span>
-          <span id="hstat-buy" class="hist-stat-val h-buy">—</span>
-        </div>
-        <div class="hist-stat">
-          <span class="hist-stat-lbl">SELL fired</span>
-          <span id="hstat-sell" class="hist-stat-val h-sell">—</span>
-        </div>
-        <div class="hist-stat">
-          <span class="hist-stat-lbl">Acted on</span>
-          <span id="hstat-acted" class="hist-stat-val">—</span>
-        </div>
-      </div>
-
-      <!-- Table -->
-      <div class="table-wrap">
-        <table id="hist-table">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Symbol</th>
-              <th>Technical</th>
-              <th>AI</th>
-              <th>Final</th>
-              <th>Confidence</th>
-              <th>Reason</th>
-            </tr>
-          </thead>
-          <tbody id="hist-tbody">
-            <tr>
-              <td colspan="7">
-                <div class="empty-state">
-                  <i data-lucide="clock"></i>
-                  <p>Select a time range to load signal history</p>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
     </div>
 
   </div>
@@ -924,68 +901,112 @@ document.addEventListener('DOMContentLoaded', () => {
   window.loadHistory = function() {
     const dates = getHistDates();
     if (!dates) return;
-    const symbol = document.getElementById('hist-symbol').value;
+    const isCustom = _histRange === 'custom';
     const params = new URLSearchParams({ from: dates.from, to: dates.to });
-    if (symbol) params.set('symbol', symbol);
 
-    // Loading state
-    document.getElementById('hist-tbody').innerHTML =
-      '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:28px;font-size:.85rem">' +
-      '<span style="display:inline-flex;align-items:center;gap:8px">' +
-      '<span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;animation:pulseDot 1s ease-in-out infinite"></span>' +
-      'Loading…</span></td></tr>';
-    ['hstat-total','hstat-buy','hstat-sell','hstat-acted'].forEach(id => {
-      document.getElementById(id).textContent = '…';
-    });
+    // Toggle which view is visible
+    document.getElementById('hist-summary').style.display    = isCustom ? 'none' : 'grid';
+    document.getElementById('hist-table-wrap').style.display = isCustom ? 'block' : 'none';
+
+    // Loading placeholder
+    if (isCustom) {
+      document.getElementById('hist-tbody').innerHTML =
+        '<tr><td colspan="7" style="text-align:center;color:#64748b;padding:28px;font-size:.85rem">' +
+        '<span style="display:inline-flex;align-items:center;gap:8px">' +
+        '<span style="width:6px;height:6px;border-radius:50%;background:#3b82f6;animation:pulseDot 1s ease-in-out infinite"></span>' +
+        'Loading…</span></td></tr>';
+    } else {
+      document.getElementById('hist-summary').innerHTML =
+        '<div style="grid-column:1/-1;text-align:center;color:#64748b;padding:24px;font-size:.85rem">Loading…</div>';
+    }
 
     fetch('/api/live/signals/history?' + params)
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(data => {
-        document.getElementById('hstat-total').textContent  = data.total;
-        document.getElementById('hstat-buy').textContent    = data.buyCount;
-        document.getElementById('hstat-sell').textContent   = data.sellCount;
-        document.getElementById('hstat-acted').textContent  = data.actedOn;
+        if (isCustom) {
+          // ── Custom range: show stats + full table ───────────────────────
+          document.getElementById('hstat-total').textContent  = data.total;
+          document.getElementById('hstat-buy').textContent    = data.buyCount;
+          document.getElementById('hstat-sell').textContent   = data.sellCount;
+          document.getElementById('hstat-acted').textContent  = data.actedOn;
 
-        const tbody = document.getElementById('hist-tbody');
-        if (!data.signals?.length) {
-          tbody.innerHTML =
-            '<tr><td colspan="7"><div class="empty-state">' +
-            '<i data-lucide="search"></i><p>No signals found in this time range</p>' +
-            '</div></td></tr>';
-          lucide.createIcons(); return;
+          const tbody = document.getElementById('hist-tbody');
+          if (!data.signals?.length) {
+            tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">' +
+              '<i data-lucide="search"></i><p>No signals found in this range</p></div></td></tr>';
+            lucide.createIcons(); return;
+          }
+          tbody.innerHTML = data.signals.map(s => {
+            const confVal = (s.confidence && parseFloat(s.confidence) > 0)
+              ? s.confidence : (s.mlConfidence && parseFloat(s.mlConfidence) > 0 ? s.mlConfidence : null);
+            const acted = s.actedOn
+              ? '<span style="color:#34d399;margin-left:4px"><i data-lucide="check-circle" style="width:13px;height:13px"></i></span>'
+              : '';
+            return `<tr>
+              <td style="white-space:nowrap;color:#64748b;font-size:.8rem">${s.createdAt ?? '—'}</td>
+              <td style="font-weight:600;color:#e2e8f0">${s.symbol}</td>
+              <td><span class="badge ${badgeCls(s.technicalSignal)}">${s.technicalSignal ?? '—'}</span></td>
+              <td><span class="badge ${badgeCls(s.mlSignal)}">${s.mlSignal ?? '—'}</span></td>
+              <td style="white-space:nowrap"><span class="badge ${badgeCls(s.direction)}">${s.direction}</span>${acted}</td>
+              <td style="font-size:.82rem;color:#94a3b8">${confVal ? confVal + '%' : '—'}</td>
+              <td style="font-size:.78rem;color:#475569">${s.reason ?? '—'}</td>
+            </tr>`;
+          }).join('');
+          lucide.createIcons();
+
+        } else {
+          // ── Preset ranges: show per-symbol summary cards ────────────────
+          const bd = data.symbolBreakdown ?? {};
+          const symbols = Object.keys(bd);
+          const summary = document.getElementById('hist-summary');
+
+          if (!symbols.length) {
+            summary.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#64748b;padding:24px;font-size:.85rem">' +
+              'No signals in this period.</div>';
+            return;
+          }
+
+          summary.innerHTML = symbols.map(sym => {
+            const s = bd[sym];
+            const hasTrade = s.buyCount > 0 || s.sellCount > 0;
+            const cardCls  = s.buyCount > 0 ? 'buy-fired' : s.sellCount > 0 ? 'sell-fired' : '';
+            const tradeBadge = s.buyCount > 0
+              ? `<span class="badge b-buy" style="font-size:.7rem">BUY ×${s.buyCount}</span>`
+              : s.sellCount > 0
+                ? `<span class="badge b-sell" style="font-size:.7rem">SELL ×${s.sellCount}</span>`
+                : `<span style="font-size:.72rem;color:#475569">No trades fired</span>`;
+            const holdPct = s.total > 0 ? Math.round(s.holdCount / s.total * 100) : 0;
+            const lastDir = s.lastDir ?? 'HOLD';
+            return `<div class="hsym-card ${cardCls}">
+              <div class="hsym-name">
+                <span>${sym.replace('USD','/<wbr>USD').replace('JPY','/<wbr>JPY')}</span>
+                ${tradeBadge}
+              </div>
+              <div class="hsym-row">
+                <span class="hsym-lbl">State changes</span>
+                <span class="hsym-val">${s.total}</span>
+              </div>
+              <div class="hsym-row">
+                <span class="hsym-lbl">Holding</span>
+                <span class="hsym-val">${holdPct}% of period</span>
+              </div>
+              <div class="hsym-row">
+                <span class="hsym-lbl">Current signal</span>
+                <span class="hsym-val"><span class="badge ${badgeCls(lastDir)}" style="font-size:.7rem">${lastDir}</span></span>
+              </div>
+              ${s.lastReason ? `<div class="hsym-reason">${s.lastReason}</div>` : ''}
+            </div>`;
+          }).join('');
         }
-
-        tbody.innerHTML = data.signals.map(s => {
-          const time = s.createdAt ?? '—';
-          const confVal = (s.confidence && parseFloat(s.confidence) > 0)
-            ? s.confidence
-            : (s.mlConfidence && parseFloat(s.mlConfidence) > 0 ? s.mlConfidence : null);
-          const conf = confVal ? confVal + '%' : '—';
-          const acted = s.actedOn
-            ? '<span style="color:#34d399;margin-left:4px"><i data-lucide="check-circle" style="width:13px;height:13px"></i></span>'
-            : '';
-          const reason = s.reason ?? '—';
-          return `<tr>
-            <td style="white-space:nowrap;color:#64748b;font-size:.8rem">${time}</td>
-            <td style="font-weight:600;color:#e2e8f0">${s.symbol}</td>
-            <td><span class="badge ${badgeCls(s.technicalSignal)}">${s.technicalSignal ?? '—'}</span></td>
-            <td><span class="badge ${badgeCls(s.mlSignal)}">${s.mlSignal ?? '—'}</span></td>
-            <td style="white-space:nowrap">
-              <span class="badge ${badgeCls(s.direction)}">${s.direction}</span>${acted}
-            </td>
-            <td style="font-size:.82rem;color:#94a3b8">${conf}</td>
-            <td style="font-size:.78rem;color:#475569">${reason}</td>
-          </tr>`;
-        }).join('');
-        lucide.createIcons();
       })
       .catch(() => {
-        document.getElementById('hist-tbody').innerHTML =
-          '<tr><td colspan="7" style="text-align:center;color:#f87171;padding:24px;font-size:.85rem">' +
-          'Failed to load — please try again.</td></tr>';
-        ['hstat-total','hstat-buy','hstat-sell','hstat-acted'].forEach(id => {
-          document.getElementById(id).textContent = '—';
-        });
+        if (isCustom) {
+          document.getElementById('hist-tbody').innerHTML =
+            '<tr><td colspan="7" style="text-align:center;color:#f87171;padding:24px;font-size:.85rem">Failed to load — please try again.</td></tr>';
+        } else {
+          document.getElementById('hist-summary').innerHTML =
+            '<div style="grid-column:1/-1;text-align:center;color:#f87171;padding:24px;font-size:.85rem">Failed to load — please try again.</div>';
+        }
       });
   };
 
