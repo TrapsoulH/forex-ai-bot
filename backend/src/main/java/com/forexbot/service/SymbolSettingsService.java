@@ -43,19 +43,20 @@ public class SymbolSettingsService {
     }
 
     /**
-     * Persist changes from the bot settings form.
-     * Looks up or creates the row, applies the new values, saves.
+     * Persist changes from the bot settings form (ATR-multiplier-based UI).
+     * slAtrMult/tpAtrMult are the primary risk controls in Strategy V2.
+     * pip-based fields are kept as fallback but not updated here.
      */
-    public SymbolSettings save(String symbol, BigDecimal slPips, BigDecimal tpPips,
+    public SymbolSettings save(String symbol, BigDecimal slAtrMult, BigDecimal tpAtrMult,
                                BigDecimal volume, boolean enabled) {
         SymbolSettings s = getOrCreate(symbol);
-        s.setSlPips(slPips);
-        s.setTpPips(tpPips);
+        s.setSlAtrMult(slAtrMult);
+        s.setTpAtrMult(tpAtrMult);
         s.setVolume(volume);
         s.setEnabled(enabled);
         SymbolSettings saved = repo.save(s);
-        log.info("Symbol settings updated | symbol={} sl={} tp={} vol={} enabled={}",
-                symbol, slPips, tpPips, volume, enabled);
+        log.info("Symbol settings updated | symbol={} slMult={}×ATR tpMult={}×ATR vol={} enabled={}",
+                symbol, slAtrMult, tpAtrMult, volume, enabled);
         return saved;
     }
 }

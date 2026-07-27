@@ -27,6 +27,7 @@ import pandas as pd
 from indicators.technical import add_all_indicators
 from ml.model import ModelPredictor
 from config import settings
+from strategy.dxy_filter import DxyBias, check_dxy_confirmation
 
 
 Signal = Literal["BUY", "SELL", "HOLD"]
@@ -42,6 +43,9 @@ class SignalResult:
     reason: str
     sl_price: Optional[float] = field(default=None)
     tp_price: Optional[float] = field(default=None)
+    # Current ATR value — included on BUY/SELL so the backend can recalculate
+    # SL/TP using per-symbol ATR multipliers from SymbolSettings.
+    atr: Optional[float] = field(default=None)
 
 
 def _hold(tech: Signal = "HOLD", ml: Signal = "HOLD",
@@ -65,12 +69,29 @@ class HybridStrategy:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def evaluate(self, df_ohlcv: pd.DataFrame) -> SignalResult:
+    def evaluate(self, df_ohlcv: pd.DataFrame,
+                 dxy_bias: DxyBias = "neutral") -> SignalResult:
+        """
+        Evaluate the trading signal for this symbol.
+
+        Args:
+            df_ohlcv: OHLCV candle dataframe.
+            dxy_bias: Current DXY bias from get_dxy_bias().
+                      Used as a confirmation filter for USD-correlated pairs.
+                      Pass 'neutral' (default) to skip the DXY gate.
+        """
         df   = add_all_indicators(df_ohlcv)
         tech = self._technical_signal(df)
 
         if tech == "HOLD":
             return _hold(reason=self._technical_hold_reason(df))
+
+        # ── DXY filter (USD pairs only) ───────────────────────────────────────
+        if not check_dxy_confirmation(self.symbol, tech, dxy_bias):
+            return _hold(tech=tech, reason=(
+                f"DXY {'rising' if dxy_bias == 'strong_usd' else 'falling'} — "
+                f"USD trend contradicts {tech} on {self.symbol}, waiting"
+            ))
 
         # ── ML gate ───────────────────────────────────────────────────────────
         ml_label, ml_conf = self._ml_signal(df_ohlcv)
@@ -103,14 +124,14 @@ class HybridStrategy:
             sl_price = round(close + sl_dist, 5)
             tp_price = round(close - tp_dist, 5)
 
-        logger.info(f"[{self.symbol}] {tech} | AI {pct(ml_conf)} | "
+        logger.info(f"[{self.symbol}] {tech} | AI {pct(ml_conf)} | DXY={dxy_bias} | "
                     f"SL={sl_price} TP={tp_price} (ATR={atr:.5f})")
 
         return SignalResult(
             signal=tech, confidence=ml_conf,
             technical_signal=tech, ml_signal=ml_sig, ml_confidence=ml_conf,
             reason=f"{tech} — chart & AI agree ({pct(ml_conf)})",
-            sl_price=sl_price, tp_price=tp_price,
+            sl_price=sl_price, tp_price=tp_price, atr=round(atr, 6),
         )
 
     # ── Technical gate ────────────────────────────────────────────────────────

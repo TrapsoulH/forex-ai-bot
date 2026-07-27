@@ -124,7 +124,7 @@ public class SignalPollerService {
 
         if (!"HOLD".equals(dto.getSignal())) {
             tradeService.openTrade(symbol, dto.getSignal(), dto.getConfidence(),
-                    dto.getSlPrice(), dto.getTpPrice(), saved.getId());
+                    dto.getSlPrice(), dto.getTpPrice(), dto.getAtr(), saved.getId());
             saved.setActedOn(true);
             signalRepository.save(saved);
             sseService.broadcastTrade();

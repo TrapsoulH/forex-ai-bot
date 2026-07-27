@@ -187,7 +187,7 @@ tbody td{padding:13px 16px;font-size:.875rem;color:#cbd5e1;vertical-align:middle
 .mob-drawer-sep{border:none;border-top:1px solid rgba(59,130,246,.1);margin:4px 0}
 
 /* ── Data refresh toast ── */
-.refresh-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(4,10,24,.96);border:1px solid rgba(59,130,246,.28);border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:10px;z-index:250;width:max-content;max-width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,.45);animation:fadeUp .3s ease both;font-size:.82rem;color:#94a3b8;backdrop-filter:blur(12px);white-space:normal;flex-wrap:wrap}
+.refresh-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(4,10,24,.96);border:1px solid rgba(59,130,246,.28);border-radius:12px;padding:11px 16px;display:flex;align-items:center;gap:10px;z-index:9999;width:max-content;max-width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,.45);animation:fadeUp .3s ease both;font-size:.82rem;color:#94a3b8;backdrop-filter:blur(12px);white-space:normal;flex-wrap:wrap}
 .refresh-toast-btn{padding:5px 12px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;font-size:.78rem;font-weight:600;transition:all .18s}
 .refresh-toast-btn.primary{background:rgba(59,130,246,.18);color:#60a5fa;border:1px solid rgba(59,130,246,.28)}
 .refresh-toast-btn.primary:hover{background:rgba(59,130,246,.28)}
@@ -246,4 +246,6 @@ tbody td{padding:13px 16px;font-size:.875rem;color:#cbd5e1;vertical-align:middle
   .auth-card{padding:24px}
   .stat-card-value{font-size:1.4rem}
   .mob-drawer{width:100%;border-left:none;border-top:1px solid rgba(59,130,246,.14)}
+  /* Refresh toast: full-width, always visible at bottom on mobile */
+  .refresh-toast{left:16px;right:16px;bottom:16px;transform:none;width:auto;border-radius:14px}
 }

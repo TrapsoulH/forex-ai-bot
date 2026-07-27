@@ -21,4 +21,10 @@ public class SignalDto {
     /** ATR-based take-profit price (4.5 × ATR from entry → 1:3 R:R). Null for HOLD signals. */
     @JsonProperty("tp_price")
     private BigDecimal tpPrice;
+    /**
+     * Current ATR(14) value for this symbol.
+     * Used by TradeService to recalculate SL/TP using per-symbol ATR multipliers
+     * from SymbolSettings, overriding the signal engine's pre-calculated levels.
+     */
+    private BigDecimal atr;
 }

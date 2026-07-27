@@ -766,6 +766,21 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<span class="mo-pill green">BUY · ${mlConf}%</span>`
             : `<span class="mo-pill red">SELL · ${mlConf}%</span>`;
 
+      // DXY bias row — only shown for USD-correlated pairs
+      const dxySymbols = new Set(['EURUSD','GBPUSD','AUDUSD','XAUUSD']);
+      const dxyRow = dxySymbols.has(sym) ? (() => {
+        const bias = d.dxy_bias || 'neutral';
+        const dxyLabel = bias === 'strong_usd'
+          ? '<span class="mo-pill red">USD Strong ↑</span>'
+          : bias === 'weak_usd'
+            ? '<span class="mo-pill green">USD Weak ↓</span>'
+            : '<span class="mo-pill grey">Neutral</span>';
+        return `<div class="mo-row">
+          <span class="mo-lbl">DXY filter</span>
+          <span class="mo-val">${dxyLabel}</span>
+        </div>`;
+      })() : '';
+
       const summaryBg = fired
         ? (d.signal === 'BUY' ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.08)')
         : 'rgba(255,255,255,.03)';
@@ -805,6 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="mo-lbl">AI gate</span>
           <span class="mo-val">${aiLabel}</span>
         </div>
+        ${dxyRow}
         <div class="mo-summary" style="background:${summaryBg};color:${summaryColor};border-color:${fired ? summaryColor + '33' : 'rgba(255,255,255,.05)'}">
           ${d.reason}
         </div>
