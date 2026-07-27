@@ -120,7 +120,7 @@ public class SignalPollerService {
                 .uri("/signal/{symbol}", symbol)
                 .retrieve()
                 .bodyToMono(SignalDto.class)
-                .timeout(Duration.ofSeconds(10))
+                .timeout(Duration.ofSeconds(30))  // first call fetches candles — give it time
                 .block();
 
         if (dto == null) return;
