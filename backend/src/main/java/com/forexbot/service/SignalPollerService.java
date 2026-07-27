@@ -16,7 +16,10 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.Objects;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -50,6 +53,26 @@ public class SignalPollerService {
         this.signalClient         = signalClient;
     }
 
+    // US index CFDs — only trade during US session (13:30–20:00 UTC, Mon–Fri)
+    private static final Set<String> US_INDICES = Set.of("US100", "US500", "US30");
+    private static final ZoneId      UTC        = ZoneId.of("UTC");
+
+    /**
+     * Returns true when a US index symbol is currently within its trading window.
+     * US equity CFDs trade Mon–Fri 13:30–20:00 UTC (15:30–22:00 SAST).
+     */
+    private boolean isUsSessionOpen() {
+        ZonedDateTime now = ZonedDateTime.now(UTC);
+        int dow  = now.getDayOfWeek().getValue(); // 1=Mon … 7=Sun
+        int hour = now.getHour();
+        int min  = now.getMinute();
+        int time = hour * 60 + min;               // minutes since midnight UTC
+
+        boolean weekday  = dow >= 1 && dow <= 5;
+        boolean inWindow = time >= (13 * 60 + 30) && time < (20 * 60);
+        return weekday && inWindow;
+    }
+
     public void enable()  { botEnabled = true;  log.info("Bot ENABLED"); }
     public void disable() { botEnabled = false; log.info("Bot DISABLED"); }
     public boolean isEnabled() { return botEnabled; }
@@ -71,6 +94,12 @@ public class SignalPollerService {
             // Respect the per-symbol enabled flag — skip if disabled in bot settings
             if (!symbolSettingsService.getOrCreate(symbol).isEnabled()) {
                 log.debug("Symbol {} is disabled in settings — skipping this scan cycle", symbol);
+                continue;
+            }
+
+            // US index CFDs only trade during the US session (13:30–20:00 UTC Mon–Fri)
+            if (US_INDICES.contains(symbol) && !isUsSessionOpen()) {
+                log.debug("Symbol {} skipped — US market is closed (outside 13:30–20:00 UTC)", symbol);
                 continue;
             }
             try {

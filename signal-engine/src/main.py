@@ -1,6 +1,7 @@
 """
 Signal Engine — FastAPI service that computes hybrid trading signals.
 """
+from __future__ import annotations   # allows X | Y union syntax on Python 3.9
 import sys
 import asyncio
 from contextlib import asynccontextmanager
