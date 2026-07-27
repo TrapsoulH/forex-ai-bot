@@ -149,7 +149,7 @@ public class LiveDataController {
         long actedOn   = signals.stream().filter(com.forexbot.model.Signal::isActedOn).count();
 
         // Per-symbol breakdown for summary cards
-        List<String> symbolOrder = List.of("EURUSD", "GBPUSD", "AUDUSD", "USDJPY");
+        List<String> symbolOrder = List.of("EURUSD", "GBPUSD", "AUDUSD", "XAUUSD", "EURJPY", "AUDJPY", "US100", "US500", "US30");
         Map<String, Map<String, Object>> breakdown = new LinkedHashMap<>();
         signals.stream()
                 .map(com.forexbot.model.Signal::getSymbol)

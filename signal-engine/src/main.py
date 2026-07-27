@@ -276,8 +276,9 @@ async def market_overview():
                 "error":         None,
             }
         except Exception as e:
-            logger.warning(f"[{symbol}] market-overview error: {e}")
-            results[symbol] = {"symbol": symbol, "error": str(e)}
+            err_msg = str(e) or "failed to load data"
+            logger.warning(f"[{symbol}] market-overview error: {err_msg}")
+            results[symbol] = {"symbol": symbol, "error": err_msg}
 
     return results
 
