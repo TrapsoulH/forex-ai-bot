@@ -44,6 +44,18 @@ public class SymbolSettings {
     @Column(nullable = false)
     private boolean enabled;
 
+    /**
+     * ATR multiplier for stop-loss (e.g. 1.5 → SL placed 1.5 × ATR from entry).
+     * When the signal engine provides a current ATR value, TradeService uses
+     * these multipliers to recalculate SL/TP instead of the fixed-pip fallback.
+     */
+    @Column(name = "sl_atr_mult", nullable = false, precision = 4, scale = 2)
+    private BigDecimal slAtrMult = new BigDecimal("1.50");
+
+    /** ATR multiplier for take-profit (e.g. 4.5 → TP placed 4.5 × ATR from entry, giving 1:3 R:R). */
+    @Column(name = "tp_atr_mult", nullable = false, precision = 4, scale = 2)
+    private BigDecimal tpAtrMult = new BigDecimal("4.50");
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 
@@ -57,10 +69,18 @@ public class SymbolSettings {
             DateTimeFormatter.ofPattern("dd MMM yyyy HH:mm").withZone(ZoneId.of("UTC"));
 
     /**
-     * Risk:reward ratio as a display string like "1:2.0".
-     * Returns "—" if SL is zero to avoid division by zero.
+     * Risk:reward ratio as a display string like "1:3.0".
+     * Uses ATR multipliers when both are set; falls back to pip-based ratio.
+     * Returns "—" on zero / null to avoid division by zero.
      */
     public String rewardRatioLabel() {
+        // Prefer ATR-based ratio (primary method)
+        if (slAtrMult != null && tpAtrMult != null
+                && slAtrMult.compareTo(BigDecimal.ZERO) > 0) {
+            BigDecimal ratio = tpAtrMult.divide(slAtrMult, 1, java.math.RoundingMode.HALF_UP);
+            return "1:" + ratio.toPlainString();
+        }
+        // Fallback to pip-based ratio
         if (slPips == null || slPips.compareTo(BigDecimal.ZERO) == 0) return "—";
         if (tpPips == null) return "—";
         BigDecimal ratio = tpPips.divide(slPips, 1, java.math.RoundingMode.HALF_UP);

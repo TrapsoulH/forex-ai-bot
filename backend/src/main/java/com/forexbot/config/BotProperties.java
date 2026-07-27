@@ -16,5 +16,8 @@ public class BotProperties {
     private double slPips = 30.0;
     private double tpPips = 60.0;
     private int maxOpenTrades = 3;
-    private List<String> symbols = List.of("EURUSD", "GBPUSD", "USDJPY", "AUDUSD");
+    private List<String> symbols = List.of(
+            "EURUSD", "GBPUSD", "AUDUSD", "XAUUSD",
+            "EURJPY", "AUDJPY", "US100",  "US500", "US30"
+    );
 }

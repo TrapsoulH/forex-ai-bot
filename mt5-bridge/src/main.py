@@ -42,10 +42,14 @@ app = FastAPI(
 # ── Schemas ───────────────────────────────────────────────────────────────────
 class TradeRequest(BaseModel):
     symbol:    str
-    direction: str        # "BUY" | "SELL"
+    direction: str           # "BUY" | "SELL"
     volume:    float = 0.01
-    sl_pips:   float = 30.0
-    tp_pips:   float = 60.0
+    # ATR-based absolute price levels (preferred)
+    sl_price:  float = None
+    tp_price:  float = None
+    # Fixed pip fallback (used when sl_price/tp_price not provided)
+    sl_pips:   float = None
+    tp_pips:   float = None
 
 
 class CloseRequest(BaseModel):
@@ -102,6 +106,8 @@ async def open_trade(req: TradeRequest):
         symbol=req.symbol.upper(),
         direction=req.direction.upper(),
         volume=req.volume,
+        sl_price=req.sl_price,
+        tp_price=req.tp_price,
         sl_pips=req.sl_pips,
         tp_pips=req.tp_pips,
     )

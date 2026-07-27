@@ -43,24 +43,80 @@ public class TradeService {
         this.mt5Client            = mt5Client;
     }
 
-    public Trade openTrade(String symbol, String direction, BigDecimal confidence, Long signalId) {
-        // Resolve per-symbol risk settings; falls back to BotProperties defaults if no row exists
+    /**
+     * Open a trade, resolving SL/TP using this priority order:
+     * <ol>
+     *   <li>Per-symbol ATR multipliers (SymbolSettings.slAtrMult / tpAtrMult) when the
+     *       signal engine supplied a current ATR value — allows per-symbol R:R customisation.</li>
+     *   <li>Pre-calculated price levels from the signal engine (slPrice / tpPrice).</li>
+     *   <li>Fixed-pip fallback from SymbolSettings (slPips / tpPips).</li>
+     * </ol>
+     */
+    public Trade openTrade(String symbol, String direction, BigDecimal confidence,
+                           BigDecimal slPrice, BigDecimal tpPrice,
+                           BigDecimal atr, Long signalId) {
         SymbolSettings sym = symbolSettingsService.getOrCreate(symbol);
         BigDecimal resolvedVolume = sym.getVolume();
-        BigDecimal resolvedSl     = sym.getSlPips();
-        BigDecimal resolvedTp     = sym.getTpPips();
+
+        // ── Resolve SL/TP ─────────────────────────────────────────────────────
+        BigDecimal resolvedSl = slPrice;
+        BigDecimal resolvedTp = tpPrice;
+
+        // Priority 1: recalculate from per-symbol ATR multipliers when ATR is available
+        if (atr != null && atr.compareTo(BigDecimal.ZERO) > 0
+                && sym.getSlAtrMult() != null && sym.getTpAtrMult() != null) {
+            // We need a reference price — use the signal engine's pre-calc to derive entry,
+            // or recalculate: for BUY: entry ≈ sl_price + sl_atr_mult * atr
+            // Simpler: recalculate absolute levels from the signal's pre-calculated SL/TP
+            // entry price = slPrice + slAtrMult * atr (BUY) or slPrice - slAtrMult * atr (SELL)
+            if (slPrice != null) {
+                double atrD = atr.doubleValue();
+                double origSlMult = botProperties.getSlPips(); // fallback baseline
+                // Back-derive entry price from signal engine's calculation
+                if ("BUY".equalsIgnoreCase(direction)) {
+                    // signal: sl = close - 1.5*atr → close = sl + 1.5*atr
+                    double entry = slPrice.doubleValue() + 1.5 * atrD; // use default 1.5 to back-derive entry
+                    resolvedSl = BigDecimal.valueOf(entry - sym.getSlAtrMult().doubleValue() * atrD)
+                                           .setScale(5, java.math.RoundingMode.HALF_UP);
+                    resolvedTp = BigDecimal.valueOf(entry + sym.getTpAtrMult().doubleValue() * atrD)
+                                           .setScale(5, java.math.RoundingMode.HALF_UP);
+                } else {
+                    // signal: sl = close + 1.5*atr → close = sl - 1.5*atr
+                    double entry = slPrice.doubleValue() - 1.5 * atrD;
+                    resolvedSl = BigDecimal.valueOf(entry + sym.getSlAtrMult().doubleValue() * atrD)
+                                           .setScale(5, java.math.RoundingMode.HALF_UP);
+                    resolvedTp = BigDecimal.valueOf(entry - sym.getTpAtrMult().doubleValue() * atrD)
+                                           .setScale(5, java.math.RoundingMode.HALF_UP);
+                }
+                log.info("SL/TP recalculated using per-symbol ATR multipliers (sl×{} tp×{}) | sl={} tp={}",
+                        sym.getSlAtrMult(), sym.getTpAtrMult(), resolvedSl, resolvedTp);
+            }
+        }
 
         log.info("Opening trade | symbol={} direction={} volume={} sl={} tp={} paper={} signalId={}",
                 symbol, direction, resolvedVolume, resolvedSl, resolvedTp,
                 botProperties.isPaperTrading(), signalId);
 
-        Map<String, Object> body = Map.of(
-                "symbol",    symbol,
-                "direction", direction,
-                "volume",    resolvedVolume,
-                "sl_pips",   resolvedSl,
-                "tp_pips",   resolvedTp
-        );
+        Map<String, Object> body;
+        if (resolvedSl != null && resolvedTp != null) {
+            // ATR-based: pass absolute price levels — MT5 bridge uses them directly
+            body = Map.of(
+                    "symbol",    symbol,
+                    "direction", direction,
+                    "volume",    resolvedVolume,
+                    "sl_price",  resolvedSl,
+                    "tp_price",  resolvedTp
+            );
+        } else {
+            // Fallback: fixed pips from symbol settings
+            body = Map.of(
+                    "symbol",    symbol,
+                    "direction", direction,
+                    "volume",    resolvedVolume,
+                    "sl_pips",   sym.getSlPips(),
+                    "tp_pips",   sym.getTpPips()
+            );
+        }
 
         Map<?, ?> response = null;
         try {

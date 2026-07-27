@@ -1,11 +1,19 @@
 """
-Technical indicator computation using the `ta` library (replaces pandas-ta).
-All functions accept a DataFrame with columns: open, high, low, close, volume.
-They return the same DataFrame enriched with indicator columns.
+Technical indicator computation.
+
+Indicator set (v2):
+  - SMA 5 / 30 / 62 / 100 / 200  — trend direction and momentum alignment
+  - ADX(14)                        — trend strength filter (no trade in ranging markets)
+  - RSI(9)                         — momentum zone check (faster than RSI 14)
+  - ATR(14)                        — volatility; used for ATR-based SL/TP calculation
+  - Bollinger Bands(20)            — retained as ML feature context
+  - OBV                            — volume confirmation (ML feature)
+
+MACD and old EMA fast/slow have been removed.
 """
 import pandas as pd
 import numpy as np
-from ta.trend import EMAIndicator, MACD
+from ta.trend import ADXIndicator
 from ta.momentum import RSIIndicator
 from ta.volatility import BollingerBands, AverageTrueRange
 from ta.volume import OnBalanceVolumeIndicator
@@ -13,34 +21,38 @@ from config import settings
 
 
 def add_all_indicators(df: pd.DataFrame) -> pd.DataFrame:
-    """Compute all indicators used by the strategy."""
+    """Compute all indicators used by the strategy and ML model."""
     df = df.copy()
 
-    # ── Trend ────────────────────────────────────────────────────
-    df[f"ema_{settings.ema_fast}"] = EMAIndicator(df["close"], window=settings.ema_fast).ema_indicator()
-    df[f"ema_{settings.ema_slow}"] = EMAIndicator(df["close"], window=settings.ema_slow).ema_indicator()
-    df["ema_200"]                  = EMAIndicator(df["close"], window=200).ema_indicator()
+    # ── Simple Moving Averages ────────────────────────────────────
+    for period in settings.sma_periods:
+        df[f"sma_{period}"] = df["close"].rolling(window=period).mean()
 
-    # ── Momentum ─────────────────────────────────────────────────
+    # ── ADX(14) — trend strength ──────────────────────────────────
+    adx_ind      = ADXIndicator(df["high"], df["low"], df["close"],
+                                window=settings.adx_period)
+    df["adx"]    = adx_ind.adx()
+    df["adx_pos"] = adx_ind.adx_pos()   # +DI
+    df["adx_neg"] = adx_ind.adx_neg()   # −DI
+
+    # ── RSI(9) ────────────────────────────────────────────────────
     df["rsi"] = RSIIndicator(df["close"], window=settings.rsi_period).rsi()
 
-    macd_ind         = MACD(df["close"])
-    df["macd"]       = macd_ind.macd()
-    df["macd_signal"] = macd_ind.macd_signal()
-    df["macd_hist"]  = macd_ind.macd_diff()
+    # ── ATR(14) — volatility / SL-TP sizing ──────────────────────
+    df["atr"] = AverageTrueRange(
+        df["high"], df["low"], df["close"], window=settings.atr_period
+    ).average_true_range()
 
-    # ── Volatility ───────────────────────────────────────────────
-    bb               = BollingerBands(df["close"], window=20, window_dev=2)
-    df["bb_upper"]   = bb.bollinger_hband()
-    df["bb_lower"]   = bb.bollinger_lband()
-    df["bb_mid"]     = bb.bollinger_mavg()
-    df["atr"]        = AverageTrueRange(df["high"], df["low"], df["close"],
-                                        window=settings.atr_period).average_true_range()
+    # ── Bollinger Bands(20) — ML feature context ──────────────────
+    bb           = BollingerBands(df["close"], window=20, window_dev=2)
+    df["bb_upper"] = bb.bollinger_hband()
+    df["bb_lower"] = bb.bollinger_lband()
+    df["bb_mid"]   = bb.bollinger_mavg()
 
-    # ── Volume ───────────────────────────────────────────────────
+    # ── OBV — volume confirmation ─────────────────────────────────
     df["obv"] = OnBalanceVolumeIndicator(df["close"], df["volume"]).on_balance_volume()
 
-    # ── Price action ─────────────────────────────────────────────
+    # ── Price action ──────────────────────────────────────────────
     df["candle_body"] = abs(df["close"] - df["open"])
     df["upper_wick"]  = df["high"] - df[["open", "close"]].max(axis=1)
     df["lower_wick"]  = df[["open", "close"]].min(axis=1) - df["low"]
@@ -52,36 +64,40 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Compute normalised feature set for the ML model.
     Returns a DataFrame with feature columns only (no raw OHLCV).
+
+    NOTE: changing this function invalidates existing trained models.
+    Delete model .pkl files and retrain after deploying this change.
     """
     df = add_all_indicators(df)
 
-    ema_f = f"ema_{settings.ema_fast}"
-    ema_s = f"ema_{settings.ema_slow}"
-
     features = pd.DataFrame(index=df.index)
 
-    # EMA crossover distance (normalised by close)
-    features["ema_cross"]        = (df[ema_f] - df[ema_s]) / df["close"]
-    features["price_vs_ema200"]  = (df["close"] - df["ema_200"]) / df["close"]
+    # SMA momentum alignment (normalised by close price)
+    features["sma5_vs_sma30"]   = (df["sma_5"]  - df["sma_30"])  / df["close"]
+    features["sma30_vs_sma62"]  = (df["sma_30"] - df["sma_62"])  / df["close"]
+    features["sma62_vs_sma100"] = (df["sma_62"] - df["sma_100"]) / df["close"]
+    features["price_vs_sma100"] = (df["close"]  - df["sma_100"]) / df["close"]
+    features["price_vs_sma200"] = (df["close"]  - df["sma_200"]) / df["close"]
+
+    # ADX — trend strength [0,1]
+    features["adx_norm"]     = df["adx"] / 100.0
+    features["adx_di_diff"]  = (df["adx_pos"] - df["adx_neg"]) / 100.0
 
     # RSI normalised to [-1, 1]
-    features["rsi_norm"]         = (df["rsi"] - 50) / 50
-
-    # MACD histogram normalised by ATR
-    features["macd_hist_norm"]   = df["macd_hist"] / df["atr"]
+    features["rsi_norm"] = (df["rsi"] - 50) / 50
 
     # Bollinger Band position: 0 = lower band, 1 = upper band
-    bb_range = df["bb_upper"] - df["bb_lower"]
-    features["bb_pos"]           = (df["close"] - df["bb_lower"]) / bb_range.replace(0, float("nan"))
+    bb_range = (df["bb_upper"] - df["bb_lower"]).replace(0, float("nan"))
+    features["bb_pos"] = (df["close"] - df["bb_lower"]) / bb_range
 
     # ATR as % of close (volatility)
-    features["atr_pct"]          = df["atr"] / df["close"]
+    features["atr_pct"] = df["atr"] / df["close"]
 
     # Candle body direction and size
-    features["body_dir"]         = np.sign(df["close"] - df["open"])
-    features["body_pct"]         = df["candle_body"] / df["close"]
+    features["body_dir"] = np.sign(df["close"] - df["open"])
+    features["body_pct"] = df["candle_body"] / df["close"]
 
     # OBV 1-period % change
-    features["obv_change"]       = df["obv"].pct_change()
+    features["obv_change"] = df["obv"].pct_change()
 
     return features.dropna()

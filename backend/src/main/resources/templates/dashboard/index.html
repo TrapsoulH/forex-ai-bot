@@ -723,7 +723,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const order = ['EURUSD','GBPUSD','AUDUSD','USDJPY'];
+    const order = ['EURUSD','GBPUSD','AUDUSD','XAUUSD','EURJPY','AUDJPY','US100','US500','US30'];
     const sorted = [...symbols].sort((a,b) => order.indexOf(a) - order.indexOf(b));
 
     grid.innerHTML = sorted.map(sym => {
@@ -734,19 +734,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const fired = d.signal === 'BUY' || d.signal === 'SELL';
       const cardCls = `mo-card ${d.trend}${fired ? (d.signal === 'BUY' ? ' fired' : ' fired sell-fired') : ''}`;
 
-      const emaCrossLabel = d.ema_cross === 'fast_above'
-        ? '<span class="mo-pill green">Fast above slow</span>'
-        : '<span class="mo-pill red">Fast below slow</span>';
+      const smaCrossLabel = d.sma_cross === 'fast_above'
+        ? '<span class="mo-pill green">SMA 5 above SMA 30</span>'
+        : '<span class="mo-pill red">SMA 5 below SMA 30</span>';
 
       const price200Label = d.price_vs_200 === 'above'
-        ? '<span class="mo-pill green">Above EMA 200</span>'
-        : '<span class="mo-pill red">Below EMA 200</span>';
+        ? '<span class="mo-pill green">Above SMA 200</span>'
+        : '<span class="mo-pill red">Below SMA 200</span>';
 
-      const macdLabel = d.macd === 'positive'
-        ? '<span class="mo-pill green">Positive</span>'
-        : d.macd === 'negative'
-          ? '<span class="mo-pill red">Negative</span>'
-          : '<span class="mo-pill grey">Flat</span>';
+      const adxLabel = d.adx_state === 'strong'
+        ? `<span class="mo-pill green">Strong · ${d.adx}</span>`
+        : d.adx_state === 'moderate'
+          ? `<span class="mo-pill amber">Moderate · ${d.adx}</span>`
+          : `<span class="mo-pill grey">Weak · ${d.adx}</span>`;
 
       const rsiZoneLabel = d.rsi_zone === 'oversold'
         ? '<span class="mo-pill red">Oversold</span>'
@@ -766,6 +766,21 @@ document.addEventListener('DOMContentLoaded', () => {
             ? `<span class="mo-pill green">BUY · ${mlConf}%</span>`
             : `<span class="mo-pill red">SELL · ${mlConf}%</span>`;
 
+      // DXY bias row — only shown for USD-correlated pairs
+      const dxySymbols = new Set(['EURUSD','GBPUSD','AUDUSD','XAUUSD']);
+      const dxyRow = dxySymbols.has(sym) ? (() => {
+        const bias = d.dxy_bias || 'neutral';
+        const dxyLabel = bias === 'strong_usd'
+          ? '<span class="mo-pill red">USD Strong ↑</span>'
+          : bias === 'weak_usd'
+            ? '<span class="mo-pill green">USD Weak ↓</span>'
+            : '<span class="mo-pill grey">Neutral</span>';
+        return `<div class="mo-row">
+          <span class="mo-lbl">DXY filter</span>
+          <span class="mo-val">${dxyLabel}</span>
+        </div>`;
+      })() : '';
+
       const summaryBg = fired
         ? (d.signal === 'BUY' ? 'rgba(16,185,129,.08)' : 'rgba(239,68,68,.08)')
         : 'rgba(255,255,255,.03)';
@@ -782,11 +797,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </span>
         </div>
         <div class="mo-row">
-          <span class="mo-lbl">Trend (EMA)</span>
+          <span class="mo-lbl">Trend (SMA 200)</span>
           <span class="mo-val">${price200Label}</span>
         </div>
         <div class="mo-row">
-          <span class="mo-lbl">RSI (14) · ${d.rsi}</span>
+          <span class="mo-lbl">RSI (9) · ${d.rsi}</span>
           <span class="mo-val" style="flex:1;justify-content:flex-end">
             ${rsiZoneLabel}
             <div class="mo-rsi-track"><div class="mo-rsi-fill" style="width:${rsiPct}%;background:${rc.fill}"></div></div>
@@ -794,17 +809,18 @@ document.addEventListener('DOMContentLoaded', () => {
           </span>
         </div>
         <div class="mo-row">
-          <span class="mo-lbl">MACD</span>
-          <span class="mo-val">${macdLabel}</span>
+          <span class="mo-lbl">ADX (14)</span>
+          <span class="mo-val">${adxLabel}</span>
         </div>
         <div class="mo-row">
-          <span class="mo-lbl">EMA cross</span>
-          <span class="mo-val">${emaCrossLabel}</span>
+          <span class="mo-lbl">SMA cross</span>
+          <span class="mo-val">${smaCrossLabel}</span>
         </div>
         <div class="mo-row">
           <span class="mo-lbl">AI gate</span>
           <span class="mo-val">${aiLabel}</span>
         </div>
+        ${dxyRow}
         <div class="mo-summary" style="background:${summaryBg};color:${summaryColor};border-color:${fired ? summaryColor + '33' : 'rgba(255,255,255,.05)'}">
           ${d.reason}
         </div>

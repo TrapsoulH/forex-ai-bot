@@ -12,6 +12,7 @@ import pandas as pd
 from loguru import logger
 
 from strategy.hybrid import HybridStrategy, SignalResult
+from strategy.dxy_filter import get_dxy_bias, DxyBias
 from ml.model import ModelTrainer
 from config import settings
 
@@ -24,6 +25,11 @@ logger.add(sys.stdout, format="{time:HH:mm:ss} | {level} | {message}", level="DE
 # HTTP calls to mt5-bridge on every scan cycle (up to 60× reduction in traffic).
 _candle_cache: dict[str, tuple[pd.DataFrame, datetime]] = {}
 _CACHE_TTL = timedelta(minutes=55)
+
+# DXY candle cache — refreshed at the same TTL as normal candles
+# DXY is fetched as a non-tradeable context symbol (no strategy instance created)
+_dxy_cache: tuple[pd.DataFrame, datetime] | None = None
+_DXY_SYMBOL = "DXY"
 
 # One strategy instance per symbol
 _strategies: dict[str, HybridStrategy] = {}
@@ -75,6 +81,36 @@ async def _fetch_candles(symbol: str) -> pd.DataFrame:
     return df
 
 
+async def _fetch_dxy_candles() -> pd.DataFrame | None:
+    """
+    Fetch DXY H1 candles from the MT5 bridge with TTL cache.
+    Returns None silently if DXY is not available on the broker
+    (in that case the DXY filter falls back to neutral).
+    """
+    global _dxy_cache
+    now = datetime.now(timezone.utc)
+    if _dxy_cache is not None:
+        df_cached, cached_at = _dxy_cache
+        if (now - cached_at) < _CACHE_TTL:
+            return df_cached
+
+    try:
+        url = f"{settings.mt5_bridge_url}/candles/{_DXY_SYMBOL}"
+        params = {"timeframe": settings.timeframe, "count": 100}
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+        data = resp.json()
+        df = pd.DataFrame(data)
+        df["time"] = pd.to_datetime(df["time"])
+        _dxy_cache = (df, now)
+        logger.debug(f"[DXY] Fetched {len(df)} candles")
+        return df
+    except Exception as e:
+        logger.debug(f"[DXY] Not available on this broker ({e}) — filter will be neutral")
+        return None
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 @app.get("/health")
 def health():
@@ -92,15 +128,25 @@ async def signal(symbol: str):
     except Exception as e:
         raise HTTPException(503, f"Could not fetch candles from MT5 bridge: {e}")
 
-    result: SignalResult = _strategies[symbol].evaluate(df)
+    # DXY filter — fetch in parallel with candles (already cached after first call)
+    df_dxy   = await _fetch_dxy_candles()
+    dxy_bias = get_dxy_bias(df_dxy)
+
+    result: SignalResult = _strategies[symbol].evaluate(df, dxy_bias=dxy_bias)
     return {
-        "symbol": symbol,
-        "signal": result.signal,
-        "confidence": result.confidence,
-        "technical": result.technical_signal,
-        "ml": result.ml_signal,
+        "symbol":        symbol,
+        "signal":        result.signal,
+        "confidence":    result.confidence,
+        "technical":     result.technical_signal,
+        "ml":            result.ml_signal,
         "ml_confidence": result.ml_confidence,
-        "reason": result.reason,
+        "reason":        result.reason,
+        "sl_price":      result.sl_price,
+        "tp_price":      result.tp_price,
+        # ATR(14) at signal time — backend uses this to recalculate SL/TP
+        # with per-symbol ATR multipliers from SymbolSettings.
+        "atr":           result.atr,
+        "dxy_bias":      dxy_bias,
     }
 
 
@@ -165,6 +211,10 @@ async def market_overview():
     from indicators.technical import add_all_indicators
     results = {}
 
+    # Fetch DXY once for all symbols (cached — negligible overhead)
+    df_dxy   = await _fetch_dxy_candles()
+    dxy_bias = get_dxy_bias(df_dxy)
+
     for symbol in _strategies:
         try:
             df = await _fetch_candles(symbol)
@@ -172,7 +222,7 @@ async def market_overview():
             last = enriched.iloc[-1]
 
             strategy = _strategies[symbol]
-            result = strategy.evaluate(df)
+            result = strategy.evaluate(df, dxy_bias=dxy_bias)
 
             ml_label, ml_conf = (
                 strategy._predictor.predict(df)
@@ -181,45 +231,48 @@ async def market_overview():
             )
             ml_sig = {1: "BUY", -1: "SELL", 0: "HOLD"}.get(ml_label, "HOLD")
 
-            rsi_val = round(float(last["rsi"]), 1)
-            ema_fast = float(last[f"ema_{settings.ema_fast}"])
-            ema_slow = float(last[f"ema_{settings.ema_slow}"])
-            ema_200  = float(last["ema_200"])
+            rsi_val  = round(float(last["rsi"]), 1)
+            adx_val  = round(float(last["adx"]), 1)
+            sma_5    = float(last["sma_5"])
+            sma_30   = float(last["sma_30"])
+            sma_200  = float(last["sma_200"])
             close    = float(last["close"])
-            macd_hist = float(last["macd_hist"])
 
-            # Derive plain-English state labels
-            if ema_fast > ema_slow and close > ema_200:
+            # Trend direction
+            if sma_5 > sma_30 and close > sma_200:
                 trend = "bullish"
-            elif ema_fast < ema_slow and close < ema_200:
+            elif sma_5 < sma_30 and close < sma_200:
                 trend = "bearish"
             else:
                 trend = "ranging"
 
-            macd_state = "positive" if macd_hist > 0 else "negative" if macd_hist < 0 else "flat"
+            # ADX strength label
+            adx_state = "strong" if adx_val >= 25 else "moderate" if adx_val >= 20 else "weak"
 
-            # RSI zone label
-            if rsi_val < 35:
+            # RSI zone (using RSI 9 — slightly wider zones)
+            if rsi_val < settings.rsi_oversold + 7:   # < 35
                 rsi_zone = "oversold"
-            elif rsi_val > 65:
+            elif rsi_val > settings.rsi_overbought - 7:  # > 65
                 rsi_zone = "overbought"
             else:
                 rsi_zone = "neutral"
 
             results[symbol] = {
-                "symbol":      symbol,
-                "signal":      result.signal,
-                "trend":       trend,
-                "rsi":         rsi_val,
-                "rsi_zone":    rsi_zone,
-                "macd":        macd_state,
-                "ema_cross":   "fast_above" if ema_fast > ema_slow else "fast_below",
-                "price_vs_200": "above" if close > ema_200 else "below",
-                "technical":   result.technical_signal,
-                "ml":          ml_sig,
+                "symbol":        symbol,
+                "signal":        result.signal,
+                "trend":         trend,
+                "rsi":           rsi_val,
+                "rsi_zone":      rsi_zone,
+                "adx":           adx_val,
+                "adx_state":     adx_state,
+                "sma_cross":     "fast_above" if sma_5 > sma_30 else "fast_below",
+                "price_vs_200":  "above" if close > sma_200 else "below",
+                "technical":     result.technical_signal,
+                "ml":            ml_sig,
                 "ml_confidence": round(ml_conf * 100, 1),
-                "reason":      result.reason,
-                "error":       None,
+                "reason":        result.reason,
+                "dxy_bias":      dxy_bias,
+                "error":         None,
             }
         except Exception as e:
             logger.warning(f"[{symbol}] market-overview error: {e}")

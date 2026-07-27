@@ -86,13 +86,13 @@ public class BotSettingsController {
      */
     @PostMapping("/bot/symbol")
     public String saveSymbolSettings(@RequestParam String symbol,
-                                     @RequestParam BigDecimal sl_pips,
-                                     @RequestParam BigDecimal tp_pips,
+                                     @RequestParam(defaultValue = "1.50") BigDecimal sl_atr_mult,
+                                     @RequestParam(defaultValue = "4.50") BigDecimal tp_atr_mult,
                                      @RequestParam BigDecimal volume,
                                      @RequestParam(required = false) String enabled,
                                      RedirectAttributes redirectAttrs) {
         boolean isEnabled = "true".equalsIgnoreCase(enabled);
-        symbolSettingsService.save(symbol, sl_pips, tp_pips, volume, isEnabled);
+        symbolSettingsService.save(symbol, sl_atr_mult, tp_atr_mult, volume, isEnabled);
         redirectAttrs.addFlashAttribute("success", symbol + " settings saved.");
         return "redirect:/settings/bot";
     }
