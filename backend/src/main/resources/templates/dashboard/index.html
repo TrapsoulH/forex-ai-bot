@@ -671,7 +671,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sse.addEventListener('signal', () => {
       fetch('/api/live/stats').then(r => r.json()).then(updateStatCards).catch(console.error);
-      loadMarketOverview();
+      loadMarketOverview(true);  // silent — keep cards visible, update values in place
       loadHistory();
     });
 
@@ -856,26 +856,43 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('mo-updated').textContent = `H1 · updated ${now} SAST`;
   }
 
-  window.loadMarketOverview = function() {
+  // silent=true  → keep existing cards visible while fetching (SSE-triggered background refresh)
+  // silent=false → show loading spinner (initial page load or manual Refresh button)
+  window.loadMarketOverview = function(silent = false) {
     const grid = document.getElementById('mo-grid');
     const btn  = document.getElementById('mo-refresh-btn');
-    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:28px;color:#64748b;font-size:.85rem"><i data-lucide="loader" style="width:16px;height:16px;animation:spin 1s linear infinite"></i> Refreshing…</div>';
+    const updEl = document.getElementById('mo-updated');
+    const hasCards = !!grid.querySelector('.mo-card');
+
+    if (!silent || !hasCards) {
+      // First load or explicit refresh — show the spinner
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:28px;color:#64748b;font-size:.85rem"><i data-lucide="loader" style="width:16px;height:16px;animation:spin 1s linear infinite"></i> Loading…</div>';
+      lucide.createIcons();
+    } else {
+      // Background refresh — show a subtle "Updating…" label, keep cards visible
+      if (updEl) updEl.textContent = 'Updating…';
+    }
+
     if (btn) btn.disabled = true;
-    lucide.createIcons();
 
     fetch('/api/live/market-overview')
       .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
       .then(data => renderMarketOverview(data))
       .catch(() => {
-        grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:28px;color:#f87171;font-size:.85rem">Could not reach signal engine. Is it running?</div>';
+        // On failure: only replace the grid if it was already empty
+        if (!hasCards) {
+          grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:28px;color:#f87171;font-size:.85rem">Could not reach signal engine. Is it running?</div>';
+        } else if (updEl) {
+          updEl.textContent = 'Update failed — retrying next cycle';
+        }
       })
       .finally(() => { if (btn) btn.disabled = false; });
   };
 
   loadMarketOverview();
 
-  // Auto-refresh market overview on each SSE signal event
-  document.addEventListener('mo-refresh', loadMarketOverview);
+  // Auto-refresh market overview on each SSE signal event (silent)
+  document.addEventListener('mo-refresh', () => loadMarketOverview(true));
 
   // ── Signal history ──────────────────────────────────────────
 
