@@ -218,6 +218,15 @@ async def market_overview():
     dxy_bias = get_dxy_bias(df_dxy)
 
     async def _eval(symbol: str) -> tuple[str, dict]:
+        strategy = _strategies[symbol]
+        # If no ML model exists for this symbol, skip the candle fetch entirely.
+        # A missing model means the symbol was never successfully trained
+        # (e.g. broker has no H1 history for it). No point making a network
+        # call that will just time out — return immediately so it doesn't
+        # stall the parallel gather.
+        if not strategy._predictor.is_trained():
+            logger.debug(f"[{symbol}] market-overview: no ML model — skipping (disabled/no history)")
+            return symbol, {"symbol": symbol, "error": "no_history"}
         try:
             # 6-second ceiling per symbol — if the broker has no history for
             # this symbol it would otherwise block for the full httpx timeout.
