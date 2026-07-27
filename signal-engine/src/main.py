@@ -208,22 +208,25 @@ async def market_overview():
     Return current indicator snapshot for all symbols in one call.
     Used by the dashboard Market Overview cards.
     No DB writes — read-only snapshot of the latest candle state.
+    All symbols evaluated concurrently so one slow/missing symbol
+    (e.g. US100 with no broker history) doesn't stall the rest.
     """
     from indicators.technical import add_all_indicators
-    results = {}
 
-    # Fetch DXY once for all symbols (cached — negligible overhead)
+    # Fetch DXY once — shared across all symbol evaluations
     df_dxy   = await _fetch_dxy_candles()
     dxy_bias = get_dxy_bias(df_dxy)
 
-    for symbol in _strategies:
+    async def _eval(symbol: str) -> tuple[str, dict]:
         try:
-            df = await _fetch_candles(symbol)
+            # 6-second ceiling per symbol — if the broker has no history for
+            # this symbol it would otherwise block for the full httpx timeout.
+            df = await asyncio.wait_for(_fetch_candles(symbol), timeout=6.0)
             enriched = add_all_indicators(df)
             last = enriched.iloc[-1]
 
             strategy = _strategies[symbol]
-            result = strategy.evaluate(df, dxy_bias=dxy_bias)
+            result   = strategy.evaluate(df, dxy_bias=dxy_bias)
 
             ml_label, ml_conf = (
                 strategy._predictor.predict(df)
@@ -232,14 +235,13 @@ async def market_overview():
             )
             ml_sig = {1: "BUY", -1: "SELL", 0: "HOLD"}.get(ml_label, "HOLD")
 
-            rsi_val  = round(float(last["rsi"]), 1)
-            adx_val  = round(float(last["adx"]), 1)
-            sma_5    = float(last["sma_5"])
-            sma_30   = float(last["sma_30"])
-            sma_200  = float(last["sma_200"])
-            close    = float(last["close"])
+            rsi_val = round(float(last["rsi"]), 1)
+            adx_val = round(float(last["adx"]), 1)
+            sma_5   = float(last["sma_5"])
+            sma_30  = float(last["sma_30"])
+            sma_200 = float(last["sma_200"])
+            close   = float(last["close"])
 
-            # Trend direction
             if sma_5 > sma_30 and close > sma_200:
                 trend = "bullish"
             elif sma_5 < sma_30 and close < sma_200:
@@ -247,18 +249,16 @@ async def market_overview():
             else:
                 trend = "ranging"
 
-            # ADX strength label
             adx_state = "strong" if adx_val >= 25 else "moderate" if adx_val >= 20 else "weak"
 
-            # RSI zone (using RSI 9 — slightly wider zones)
-            if rsi_val < settings.rsi_oversold + 7:   # < 35
+            if rsi_val < settings.rsi_oversold + 7:    # < 35
                 rsi_zone = "oversold"
-            elif rsi_val > settings.rsi_overbought - 7:  # > 65
+            elif rsi_val > settings.rsi_overbought - 7: # > 65
                 rsi_zone = "overbought"
             else:
                 rsi_zone = "neutral"
 
-            results[symbol] = {
+            return symbol, {
                 "symbol":        symbol,
                 "signal":        result.signal,
                 "trend":         trend,
@@ -275,12 +275,18 @@ async def market_overview():
                 "dxy_bias":      dxy_bias,
                 "error":         None,
             }
+        except asyncio.TimeoutError:
+            logger.warning(f"[{symbol}] market-overview: no candle history on broker (timeout)")
+            return symbol, {"symbol": symbol, "error": "no_history"}
         except Exception as e:
             err_msg = str(e) or "failed to load data"
             logger.warning(f"[{symbol}] market-overview error: {err_msg}")
-            results[symbol] = {"symbol": symbol, "error": err_msg}
+            return symbol, {"symbol": symbol, "error": err_msg}
 
-    return results
+    # Evaluate all symbols in parallel — fast symbols return immediately,
+    # slow/missing symbols time out after 6s without blocking the others.
+    pairs = await asyncio.gather(*[_eval(s) for s in _strategies])
+    return dict(pairs)
 
 
 @app.get("/debug/{symbol}")
