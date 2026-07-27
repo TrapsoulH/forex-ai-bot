@@ -94,13 +94,15 @@ async def signal(symbol: str):
 
     result: SignalResult = _strategies[symbol].evaluate(df)
     return {
-        "symbol": symbol,
-        "signal": result.signal,
-        "confidence": result.confidence,
-        "technical": result.technical_signal,
-        "ml": result.ml_signal,
+        "symbol":       symbol,
+        "signal":       result.signal,
+        "confidence":   result.confidence,
+        "technical":    result.technical_signal,
+        "ml":           result.ml_signal,
         "ml_confidence": result.ml_confidence,
-        "reason": result.reason,
+        "reason":       result.reason,
+        "sl_price":     result.sl_price,
+        "tp_price":     result.tp_price,
     }
 
 
@@ -181,45 +183,47 @@ async def market_overview():
             )
             ml_sig = {1: "BUY", -1: "SELL", 0: "HOLD"}.get(ml_label, "HOLD")
 
-            rsi_val = round(float(last["rsi"]), 1)
-            ema_fast = float(last[f"ema_{settings.ema_fast}"])
-            ema_slow = float(last[f"ema_{settings.ema_slow}"])
-            ema_200  = float(last["ema_200"])
+            rsi_val  = round(float(last["rsi"]), 1)
+            adx_val  = round(float(last["adx"]), 1)
+            sma_5    = float(last["sma_5"])
+            sma_30   = float(last["sma_30"])
+            sma_200  = float(last["sma_200"])
             close    = float(last["close"])
-            macd_hist = float(last["macd_hist"])
 
-            # Derive plain-English state labels
-            if ema_fast > ema_slow and close > ema_200:
+            # Trend direction
+            if sma_5 > sma_30 and close > sma_200:
                 trend = "bullish"
-            elif ema_fast < ema_slow and close < ema_200:
+            elif sma_5 < sma_30 and close < sma_200:
                 trend = "bearish"
             else:
                 trend = "ranging"
 
-            macd_state = "positive" if macd_hist > 0 else "negative" if macd_hist < 0 else "flat"
+            # ADX strength label
+            adx_state = "strong" if adx_val >= 25 else "moderate" if adx_val >= 20 else "weak"
 
-            # RSI zone label
-            if rsi_val < 35:
+            # RSI zone (using RSI 9 — slightly wider zones)
+            if rsi_val < settings.rsi_oversold + 7:   # < 35
                 rsi_zone = "oversold"
-            elif rsi_val > 65:
+            elif rsi_val > settings.rsi_overbought - 7:  # > 65
                 rsi_zone = "overbought"
             else:
                 rsi_zone = "neutral"
 
             results[symbol] = {
-                "symbol":      symbol,
-                "signal":      result.signal,
-                "trend":       trend,
-                "rsi":         rsi_val,
-                "rsi_zone":    rsi_zone,
-                "macd":        macd_state,
-                "ema_cross":   "fast_above" if ema_fast > ema_slow else "fast_below",
-                "price_vs_200": "above" if close > ema_200 else "below",
-                "technical":   result.technical_signal,
-                "ml":          ml_sig,
+                "symbol":        symbol,
+                "signal":        result.signal,
+                "trend":         trend,
+                "rsi":           rsi_val,
+                "rsi_zone":      rsi_zone,
+                "adx":           adx_val,
+                "adx_state":     adx_state,
+                "sma_cross":     "fast_above" if sma_5 > sma_30 else "fast_below",
+                "price_vs_200":  "above" if close > sma_200 else "below",
+                "technical":     result.technical_signal,
+                "ml":            ml_sig,
                 "ml_confidence": round(ml_conf * 100, 1),
-                "reason":      result.reason,
-                "error":       None,
+                "reason":        result.reason,
+                "error":         None,
             }
         except Exception as e:
             logger.warning(f"[{symbol}] market-overview error: {e}")

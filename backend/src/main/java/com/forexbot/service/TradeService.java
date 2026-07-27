@@ -43,24 +43,39 @@ public class TradeService {
         this.mt5Client            = mt5Client;
     }
 
-    public Trade openTrade(String symbol, String direction, BigDecimal confidence, Long signalId) {
-        // Resolve per-symbol risk settings; falls back to BotProperties defaults if no row exists
+    /**
+     * Open a trade using ATR-based SL/TP price levels from the signal engine.
+     * If slPrice/tpPrice are null (e.g. old signals), falls back to fixed pips from SymbolSettings.
+     */
+    public Trade openTrade(String symbol, String direction, BigDecimal confidence,
+                           BigDecimal slPrice, BigDecimal tpPrice, Long signalId) {
         SymbolSettings sym = symbolSettingsService.getOrCreate(symbol);
         BigDecimal resolvedVolume = sym.getVolume();
-        BigDecimal resolvedSl     = sym.getSlPips();
-        BigDecimal resolvedTp     = sym.getTpPips();
 
         log.info("Opening trade | symbol={} direction={} volume={} sl={} tp={} paper={} signalId={}",
-                symbol, direction, resolvedVolume, resolvedSl, resolvedTp,
+                symbol, direction, resolvedVolume, slPrice, tpPrice,
                 botProperties.isPaperTrading(), signalId);
 
-        Map<String, Object> body = Map.of(
-                "symbol",    symbol,
-                "direction", direction,
-                "volume",    resolvedVolume,
-                "sl_pips",   resolvedSl,
-                "tp_pips",   resolvedTp
-        );
+        Map<String, Object> body;
+        if (slPrice != null && tpPrice != null) {
+            // ATR-based: pass absolute price levels — MT5 bridge uses them directly
+            body = Map.of(
+                    "symbol",    symbol,
+                    "direction", direction,
+                    "volume",    resolvedVolume,
+                    "sl_price",  slPrice,
+                    "tp_price",  tpPrice
+            );
+        } else {
+            // Fallback: fixed pips from symbol settings
+            body = Map.of(
+                    "symbol",    symbol,
+                    "direction", direction,
+                    "volume",    resolvedVolume,
+                    "sl_pips",   sym.getSlPips(),
+                    "tp_pips",   sym.getTpPips()
+            );
+        }
 
         Map<?, ?> response = null;
         try {
