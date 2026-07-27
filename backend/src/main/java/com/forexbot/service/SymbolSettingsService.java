@@ -30,6 +30,8 @@ public class SymbolSettingsService {
                     .symbol(symbol)
                     .slPips(BigDecimal.valueOf(botProperties.getSlPips()))
                     .tpPips(BigDecimal.valueOf(botProperties.getTpPips()))
+                    .slAtrMult(new BigDecimal("1.50"))
+                    .tpAtrMult(new BigDecimal("4.50"))
                     .volume(BigDecimal.valueOf(botProperties.getDefaultVolume()))
                     .enabled(true)
                     .build();
