@@ -82,7 +82,7 @@ bot:
   sl-pips: ${SL_PIPS:30.0}
   tp-pips: ${TP_PIPS:60.0}
   max-open-trades: ${MAX_OPEN_TRADES:3}
-  symbols: ${SYMBOLS:EURUSD,GBPUSD,USDJPY,AUDUSD}
+  symbols: ${SYMBOLS:EURUSD,GBPUSD,AUDUSD,XAUUSD,EURJPY,AUDJPY,US100,US500,US30}
 
 logging:
   level:
