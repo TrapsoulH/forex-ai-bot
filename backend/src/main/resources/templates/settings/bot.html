@@ -135,7 +135,7 @@
       <div style="display:flex;align-items:center;justify-content:space-between;padding:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px">
         <div>
           <div style="font-size:.9rem;font-weight:600;color:#f1f5f9">Paper trading mode</div>
-          <div style="font-size:.78rem;color:#475569;margin-top:3px">No real orders are placed while this is on. Turn off only when you're confident in the strategy.</div>
+          <div style="font-size:.78rem;color:#475569;margin-top:3px">When ON, the bot signals but places no real orders — safe for testing. Turn OFF only when you're ready to go live.</div>
         </div>
         <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0;margin-left:20px">
           <input type="checkbox" name="paper_trading" value="true" id="paper-toggle"
@@ -160,7 +160,7 @@
           <input type="number" name="scan_interval_sec" class="input" min="30" max="3600" step="1"
                  th:value="${values['scan_interval_sec']}" placeholder="60"/>
         </div>
-        <p style="font-size:.75rem;color:#334155;margin-top:5px">How often the signal engine is polled. Minimum 30 seconds.</p>
+        <p style="font-size:.75rem;color:#334155;margin-top:5px">How often the bot checks for new signals. 60 seconds is recommended. Minimum 30.</p>
       </div>
     </div>
 
@@ -170,22 +170,28 @@
         <div class="ic ic-sm ic-green"><i data-lucide="trending-up"></i></div>
         <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Risk management</h2>
       </div>
+      <p style="font-size:.78rem;color:#475569;margin:0 0 16px 0">
+        These are global fallback values used when per-symbol ATR settings are not available.
+        The per-symbol cards below take priority.
+      </p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div>
-          <label class="label">Stop loss (pips)</label>
+          <label class="label">Fallback stop loss (pips)</label>
           <div class="input-wrap">
             <i data-lucide="arrow-down" class="i-pfx"></i>
             <input type="number" name="sl_pips" class="input" min="5" max="500" step="0.5"
                    th:value="${values['sl_pips']}" placeholder="30"/>
           </div>
+          <p style="font-size:.75rem;color:#334155;margin-top:5px">Used only if ATR is unavailable for a symbol.</p>
         </div>
         <div>
-          <label class="label">Take profit (pips)</label>
+          <label class="label">Fallback take profit (pips)</label>
           <div class="input-wrap">
             <i data-lucide="arrow-up" class="i-pfx"></i>
             <input type="number" name="tp_pips" class="input" min="5" max="1000" step="0.5"
-                   th:value="${values['tp_pips']}" placeholder="60"/>
+                   th:value="${values['tp_pips']}" placeholder="90"/>
           </div>
+          <p style="font-size:.75rem;color:#334155;margin-top:5px">Should be 3× your stop loss for a 1:3 R:R ratio.</p>
         </div>
         <div>
           <label class="label">Default lot size</label>
@@ -194,14 +200,16 @@
             <input type="number" name="default_volume" class="input" min="0.01" max="10" step="0.01"
                    th:value="${values['default_volume']}" placeholder="0.01"/>
           </div>
+          <p style="font-size:.75rem;color:#334155;margin-top:5px">0.01 = micro lot (smallest size, lowest risk).</p>
         </div>
         <div>
-          <label class="label">Max open trades</label>
+          <label class="label">Max open trades at once</label>
           <div class="input-wrap">
             <i data-lucide="git-merge" class="i-pfx"></i>
             <input type="number" name="max_open_trades" class="input" min="1" max="20" step="1"
                    th:value="${values['max_open_trades']}" placeholder="3"/>
           </div>
+          <p style="font-size:.75rem;color:#334155;margin-top:5px">Bot won't open new trades once this limit is reached.</p>
         </div>
       </div>
     </div>
@@ -214,7 +222,7 @@
           <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Per-symbol overrides</h2>
         </div>
       </div>
-      <p style="font-size:.78rem;color:#475569;margin:0 0 20px 0">Set how wide your stop-loss and take-profit are for each pair, expressed as a multiple of the current ATR(14). Volume controls lot size. Disable a symbol to skip it entirely.</p>
+      <p style="font-size:.78rem;color:#475569;margin:0 0 20px 0">Fine-tune each trading pair individually. Changes here override the global defaults above.</p>
 
       <div style="display:flex;flex-direction:column;gap:12px" id="sym-cards">
         <div th:each="sym : ${symbolSettings}">
@@ -256,8 +264,8 @@
 
               <!-- ATR multiplier hint -->
               <p style="font-size:.72rem;color:#475569;margin:0 0 10px 0">
-                SL &amp; TP are placed relative to the current ATR(14) value at entry time.
-                Example: ATR = 0.0012 with SL ×1.5 → stop 18 pips away.
+                Stop loss and take profit are set automatically based on market volatility (ATR).
+                Higher multiplier = wider stop, more room to breathe. Default is 1:3 risk/reward.
               </p>
 
               <!-- SL ATR mult / TP ATR mult / Volume / R:R grid -->
@@ -322,28 +330,29 @@
 
     <!-- ── Signal quality ── -->
     <div class="gcard" style="padding:24px;margin-bottom:16px;background:rgba(13,31,53,.6);border:1px solid rgba(255,255,255,.07)">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
         <div class="ic ic-sm ic-purple" style="background:rgba(139,92,246,.15);color:#a78bfa"><i data-lucide="cpu"></i></div>
-        <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">Signal quality</h2>
+        <h2 style="font-size:.95rem;font-weight:700;color:#f1f5f9;margin:0">AI signal quality</h2>
       </div>
+      <p style="font-size:.78rem;color:#475569;margin:0 0 16px 0">Control how strict the AI needs to be before the bot acts on a signal.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
         <div>
-          <label class="label">Min ML confidence (0–1)</label>
+          <label class="label">AI confidence required (0–1)</label>
           <div class="input-wrap">
             <i data-lucide="brain" class="i-pfx"></i>
-            <input type="number" name="min_ml_confidence" class="input" min="0.5" max="0.99" step="0.01"
-                   th:value="${values['min_ml_confidence']}" placeholder="0.55"/>
+            <input type="number" name="min_ml_confidence" class="input" min="0.30" max="0.99" step="0.01"
+                   th:value="${values['min_ml_confidence']}" placeholder="0.45"/>
           </div>
-          <p style="font-size:.75rem;color:#334155;margin-top:5px">Higher = fewer but more confident signals.</p>
+          <p style="font-size:.75rem;color:#334155;margin-top:5px">0.45 = 45% — current setting. Raise this to get fewer, higher-quality signals. Lower it for more signals.</p>
         </div>
         <div>
-          <label class="label">Symbols</label>
+          <label class="label">Active symbols</label>
           <div class="input-wrap">
             <i data-lucide="bar-chart-2" class="i-pfx"></i>
             <input type="text" name="symbols" class="input"
-                   th:value="${values['symbols']}" placeholder="EURUSD,GBPUSD,USDJPY,AUDUSD"/>
+                   th:value="${values['symbols']}" placeholder="EURUSD,GBPUSD,AUDUSD,XAUUSD,EURJPY,AUDJPY,US100,US500,US30"/>
           </div>
-          <p style="font-size:.75rem;color:#334155;margin-top:5px">Comma-separated. Changes take effect on next scan.</p>
+          <p style="font-size:.75rem;color:#334155;margin-top:5px">Comma-separated list of pairs to scan. Takes effect on the next scan cycle.</p>
         </div>
       </div>
     </div>
