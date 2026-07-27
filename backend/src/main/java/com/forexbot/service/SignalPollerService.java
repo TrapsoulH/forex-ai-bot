@@ -170,4 +170,44 @@ public class SignalPollerService {
         int deleted = signalRepository.deleteOldHoldSignals(cutoff);
         log.info("Signal retention: deleted {} HOLD signals older than 7 days", deleted);
     }
+
+    // ── Auto-retrain ML models weekly ────────────────────────────────────────
+    // Runs every Sunday at 03:00 SAST (after signal cleanup at 02:00).
+    // Retrains XGBoost models for all enabled symbols so accuracy improves
+    // as more H1 candle history accumulates on the broker over time.
+    @Scheduled(cron = "0 0 3 * * SUN", zone = "Africa/Johannesburg")
+    public void retrainAllModels() {
+        log.info("Weekly auto-retrain starting for {} symbols", botProperties.getSymbols().size());
+        int success = 0;
+        int failed  = 0;
+
+        for (String symbol : botProperties.getSymbols()) {
+            // Skip disabled symbols — no point training a model that won't be used
+            if (!symbolSettingsService.getOrCreate(symbol).isEnabled()) {
+                log.debug("[{}] Skipping retrain — symbol is disabled", symbol);
+                continue;
+            }
+            try {
+                Map<?, ?> result = signalClient.post()
+                        .uri("/train/{symbol}", symbol)
+                        .retrieve()
+                        .bodyToMono(Map.class)
+                        .timeout(Duration.ofMinutes(5))   // training fetches 5000 candles — give it time
+                        .block();
+
+                Object acc = result != null ? result.get("accuracy") : null;
+                Object samples = result != null ? result.get("samples") : null;
+                log.info("[{}] Retrain complete — accuracy={} samples={}", symbol, acc, samples);
+                success++;
+            } catch (WebClientResponseException e) {
+                log.warn("[{}] Retrain failed — signal engine returned {}: {}", symbol, e.getStatusCode().value(), e.getResponseBodyAsString());
+                failed++;
+            } catch (Exception e) {
+                log.warn("[{}] Retrain failed — {}", symbol, e.getMessage());
+                failed++;
+            }
+        }
+
+        log.info("Weekly auto-retrain complete — {}/{} symbols succeeded", success, success + failed);
+    }
 }

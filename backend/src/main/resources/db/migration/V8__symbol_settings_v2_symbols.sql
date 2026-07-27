@@ -13,7 +13,9 @@ VALUES
     ('EURJPY',   25.00,  75.00, 0.0100, TRUE,  1.50, 4.50),
     ('AUDJPY',   25.00,  75.00, 0.0100, TRUE,  1.50, 4.50),
     -- US indices (CFD points, not pips — pip fields are fallback only)
-    ('US100',   150.00, 450.00, 0.0100, TRUE,  1.50, 4.50),
+    -- US100 disabled by default: broker has no H1 history so ML model cannot be trained.
+    -- Enable manually in bot settings once candle history is available and model is trained.
+    ('US100',   150.00, 450.00, 0.0100, FALSE, 1.50, 4.50),
     ('US500',    20.00,  60.00, 0.0100, TRUE,  1.50, 4.50),
     ('US30',    150.00, 450.00, 0.0100, TRUE,  1.50, 4.50)
 ON DUPLICATE KEY UPDATE symbol = symbol;  -- no-op if row already exists
