@@ -174,41 +174,82 @@ public class SignalPollerService {
 
     // ── Auto-retrain ML models weekly ────────────────────────────────────────
     // Runs every Sunday at 03:00 SAST (after signal cleanup at 02:00).
-    // Retrains XGBoost models for all enabled symbols so accuracy improves
-    // as more H1 candle history accumulates on the broker over time.
+    //
+    // Enabled symbols  → retrain as normal so accuracy improves over time.
+    // Disabled symbols → probe: attempt training to see if the broker has
+    //   accumulated enough H1 candle history yet. If training succeeds with
+    //   ≥ 400 usable samples (roughly 4–5 months of US session hours for
+    //   indices), the symbol is auto-enabled so it starts being scanned.
+    //   This means you never have to manually remember to re-enable US100 —
+    //   it turns itself on once there's enough data.
     @Scheduled(cron = "0 0 3 * * SUN", zone = "Africa/Johannesburg")
     public void retrainAllModels() {
         log.info("Weekly auto-retrain starting for {} symbols", botProperties.getSymbols().size());
-        int success = 0;
-        int failed  = 0;
+        int success   = 0;
+        int failed    = 0;
+        int autoEnabled = 0;
+
+        // Minimum training samples required before we consider a model usable.
+        // Below this the model is likely overfit or nearly random — keep disabled.
+        final int MIN_SAMPLES_TO_ENABLE = 400;
 
         for (String symbol : botProperties.getSymbols()) {
-            // Skip disabled symbols — no point training a model that won't be used
-            if (!symbolSettingsService.getOrCreate(symbol).isEnabled()) {
-                log.debug("[{}] Skipping retrain — symbol is disabled", symbol);
-                continue;
-            }
+            var settings   = symbolSettingsService.getOrCreate(symbol);
+            boolean enabled = settings.isEnabled();
+
             try {
                 Map<?, ?> result = signalClient.post()
                         .uri("/train/{symbol}", symbol)
                         .retrieve()
                         .bodyToMono(Map.class)
-                        .timeout(Duration.ofMinutes(5))   // training fetches 5000 candles — give it time
+                        .timeout(Duration.ofMinutes(5))
                         .block();
 
-                Object acc = result != null ? result.get("accuracy") : null;
-                Object samples = result != null ? result.get("samples") : null;
-                log.info("[{}] Retrain complete — accuracy={} samples={}", symbol, acc, samples);
-                success++;
+                Object acc     = result != null ? result.get("accuracy") : null;
+                Object samplesObj = result != null ? result.get("samples") : null;
+                int    samples = samplesObj instanceof Number n ? n.intValue() : 0;
+
+                if (enabled) {
+                    log.info("[{}] Retrain complete — accuracy={} samples={}", symbol, acc, samples);
+                    success++;
+                } else {
+                    // Disabled symbol successfully trained — check if we have enough data
+                    if (samples >= MIN_SAMPLES_TO_ENABLE) {
+                        symbolSettingsService.save(symbol,
+                                settings.getSlAtrMult(), settings.getTpAtrMult(),
+                                settings.getVolume(), true);
+                        log.info("[{}] AUTO-ENABLED — broker now has enough history " +
+                                 "(samples={}, accuracy={}). Symbol will be scanned from next cycle.",
+                                 symbol, samples, acc);
+                        autoEnabled++;
+                        success++;
+                    } else {
+                        log.info("[{}] Probe train: {} samples so far — need {} to auto-enable. " +
+                                 "Check back next Sunday.", symbol, samples, MIN_SAMPLES_TO_ENABLE);
+                    }
+                }
+
             } catch (WebClientResponseException e) {
-                log.warn("[{}] Retrain failed — signal engine returned {}: {}", symbol, e.getStatusCode().value(), e.getResponseBodyAsString());
-                failed++;
+                if (enabled) {
+                    log.warn("[{}] Retrain failed — signal engine returned {}: {}",
+                             symbol, e.getStatusCode().value(), e.getResponseBodyAsString());
+                    failed++;
+                } else {
+                    // Expected for symbols with no broker history — not a real error
+                    log.debug("[{}] Probe train: no broker data yet ({})", symbol, e.getStatusCode().value());
+                }
             } catch (Exception e) {
-                log.warn("[{}] Retrain failed — {}", symbol, e.getMessage());
-                failed++;
+                if (enabled) {
+                    log.warn("[{}] Retrain failed — {}", symbol, e.getMessage());
+                    failed++;
+                } else {
+                    log.debug("[{}] Probe train: not ready yet — {}", symbol, e.getMessage());
+                }
             }
         }
 
-        log.info("Weekly auto-retrain complete — {}/{} symbols succeeded", success, success + failed);
+        log.info("Weekly auto-retrain complete — {}/{} enabled symbols succeeded{}",
+                 success, success + failed,
+                 autoEnabled > 0 ? " · " + autoEnabled + " symbol(s) auto-enabled" : "");
     }
 }
