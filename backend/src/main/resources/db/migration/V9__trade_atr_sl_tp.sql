@@ -7,4 +7,4 @@
 --     the application-layer fix in TradeService.openTrade() now populates them.
 
 ALTER TABLE trades
-    ADD COLUMN IF NOT EXISTS atr DECIMAL(10,6) NULL;
+    ADD COLUMN atr DECIMAL(10,6) NULL;
