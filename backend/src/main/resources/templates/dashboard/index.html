@@ -712,6 +712,29 @@ document.addEventListener('DOMContentLoaded', () => {
     return sym.length === 6 ? sym.slice(0, 3) + '/' + sym.slice(3) : sym;
   }
 
+  // US equity CFDs only scan Mon–Fri 15:30–22:00 SAST (= 13:30–20:00 UTC)
+  const US_INDEX_SYMBOLS = new Set(['US100', 'US500', 'US30']);
+  function usSessionStatus() {
+    const now  = new Date();
+    const sast = new Date(now.toLocaleString('en-US', { timeZone: 'Africa/Johannesburg' }));
+    const day  = sast.getDay();            // 0=Sun … 6=Sat
+    const mins = sast.getHours() * 60 + sast.getMinutes();
+    const open = day >= 1 && day <= 5 && mins >= (15*60+30) && mins < 22*60;
+    if (open) {
+      return { open: true,  label: 'Scanning now · closes 22:00 SAST' };
+    }
+    // Work out when it next opens
+    const isWeekend = day === 0 || day === 6;
+    const afterClose = mins >= 22*60;
+    if (isWeekend || (day === 5 && afterClose) || day === 6) {
+      return { open: false, label: 'Closed · reopens Monday 15:30 SAST' };
+    }
+    if (afterClose) {
+      return { open: false, label: 'Closed · opens tomorrow 15:30 SAST' };
+    }
+    return { open: false, label: 'Closed · opens today 15:30 SAST' };
+  }
+
   function rsiColor(rsi) {
     if (rsi < 35) return { fill: '#ef4444', cls: 'red' };
     if (rsi > 65) return { fill: '#f59e0b', cls: 'amber' };
@@ -826,6 +849,15 @@ document.addEventListener('DOMContentLoaded', () => {
           <span class="mo-val">${aiLabel}</span>
         </div>
         ${dxyRow}
+        ${US_INDEX_SYMBOLS.has(sym) ? (() => {
+          const s = usSessionStatus();
+          return `<div class="mo-row">
+            <span class="mo-lbl">US session</span>
+            <span class="mo-val">
+              <span class="mo-pill ${s.open ? 'green' : 'grey'}">${s.label}</span>
+            </span>
+          </div>`;
+        })() : ''}
         <div class="mo-summary" style="background:${summaryBg};color:${summaryColor};border-color:${fired ? summaryColor + '33' : 'rgba(255,255,255,.05)'}">
           ${d.reason}
         </div>
