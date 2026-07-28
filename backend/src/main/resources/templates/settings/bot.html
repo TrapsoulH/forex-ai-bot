@@ -307,6 +307,23 @@
                 </div>
               </div>
 
+              <!-- ML model accuracy row -->
+              <div th:with="ms=${modelStats[sym.symbol]}"
+                   style="margin-top:12px;padding:10px 12px;background:rgba(139,92,246,.06);border:1px solid rgba(139,92,246,.15);border-radius:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <div style="display:flex;align-items:center;gap:5px;flex:1;min-width:0">
+                  <i data-lucide="cpu" style="width:12px;height:12px;color:#a78bfa;flex-shrink:0"></i>
+                  <span style="font-size:.73rem;color:#7c3aed;font-weight:600;white-space:nowrap">ML model</span>
+                  <span th:if="${ms != null}"
+                        style="font-size:.73rem;color:#a78bfa">
+                    — <span style="color:#c4b5fd;font-weight:700" th:text="${ms['accuracy']} + '%'">—</span>
+                    accuracy · <span th:text="${ms['samples']}">—</span> samples
+                    · trained <span th:text="${ms['trained_at']}">—</span>
+                  </span>
+                  <span th:if="${ms == null}"
+                        style="font-size:.73rem;color:#475569">— not yet trained (run on Sunday or retrain manually)</span>
+                </div>
+              </div>
+
               <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                 <p style="font-size:.72rem;color:#334155;margin:0">Last updated: <span style="color:#475569"
                      th:text="${sym.formattedUpdatedAt()}">—</span></p>

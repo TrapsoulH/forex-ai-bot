@@ -62,6 +62,10 @@ public class Trade {
     @Column(name = "paper_trade", nullable = false)
     private boolean paperTrade;
 
+    /** ATR(14) at signal time — used by TrailingStopService to size stop movements. */
+    @Column(precision = 10, scale = 6)
+    private BigDecimal atr;
+
     @PrePersist
     protected void onCreate() {
         openedAt = Instant.now();

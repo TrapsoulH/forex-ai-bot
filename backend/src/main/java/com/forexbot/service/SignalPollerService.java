@@ -5,6 +5,7 @@ import com.forexbot.dto.SignalDto;
 import com.forexbot.model.Signal;
 import com.forexbot.repository.SignalRepository;
 import com.forexbot.repository.TradeRepository;
+import com.forexbot.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -32,9 +33,17 @@ public class SignalPollerService {
     private final TradeRepository       tradeRepository;
     private final TradeService          tradeService;
     private final SseService            sseService;
+    private final EmailService          emailService;
+    private final UserRepository        userRepository;
     private final WebClient             signalClient;
 
     private volatile boolean botEnabled = false;
+
+    // ── Health check state ────────────────────────────────────────────────────
+    /** Consecutive failed health-check cycles (resets to 0 on first success). */
+    private volatile int     healthFailures = 0;
+    /** True after an alert has been sent — prevents repeated alert emails. */
+    private volatile boolean alertSent      = false;
 
     public SignalPollerService(
             BotProperties botProperties,
@@ -43,6 +52,8 @@ public class SignalPollerService {
             TradeRepository tradeRepository,
             TradeService tradeService,
             SseService sseService,
+            EmailService emailService,
+            UserRepository userRepository,
             @Qualifier("signalWebClient") WebClient signalClient
     ) {
         this.botProperties        = botProperties;
@@ -51,6 +62,8 @@ public class SignalPollerService {
         this.tradeRepository      = tradeRepository;
         this.tradeService         = tradeService;
         this.sseService           = sseService;
+        this.emailService         = emailService;
+        this.userRepository       = userRepository;
         this.signalClient         = signalClient;
     }
 
@@ -161,6 +174,70 @@ public class SignalPollerService {
         }
 
         sseService.broadcastSignal();
+    }
+
+    // ── Signal engine health check ────────────────────────────────────────────
+    // Runs every 2 minutes. Sends an alert after 2 consecutive failures
+    // (~4 minutes of downtime). Sends a recovery email on the first success
+    // after an outage so admins know the engine is back without checking manually.
+    @Scheduled(fixedDelay = 120_000)
+    public void checkSignalEngineHealth() {
+        try {
+            signalClient.get()
+                    .uri("/health")
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .block();
+
+            if (alertSent) {
+                // Recovery — engine is back online
+                alertSent      = false;
+                healthFailures = 0;
+                log.info("Signal engine RECOVERED — sending recovery email to admins");
+                notifyAdmins(
+                        "Signal engine recovered | Blue Ocean Hub",
+                        "The signal engine is back online and responding normally. " +
+                        "All scan cycles will resume on the next tick."
+                );
+            } else {
+                healthFailures = 0;
+                log.debug("Signal engine health: OK");
+            }
+
+        } catch (Exception e) {
+            healthFailures++;
+            log.warn("Signal engine health check failed ({} consecutive) — {}",
+                    healthFailures, e.getMessage());
+
+            if (healthFailures >= 2 && !alertSent) {
+                alertSent = true;
+                log.error("Signal engine unreachable for {} health checks — alerting admins", healthFailures);
+                notifyAdmins(
+                        "⚠ Signal engine down | Blue Ocean Hub",
+                        "The signal engine has been unreachable for <strong>" + healthFailures
+                        + " consecutive health checks</strong> (~" + (healthFailures * 2)
+                        + " minutes).<br><br>"
+                        + "No new signals are being generated. Please SSH into your server "
+                        + "and check the signal-engine process (e.g. "
+                        + "<code>systemctl status signal-engine</code> or "
+                        + "<code>docker logs signal-engine</code>).<br><br>"
+                        + "Error: <code>" + e.getMessage() + "</code>"
+                );
+            }
+        }
+    }
+
+    /** Send an alert email to all admin users. Fire-and-forget — never throws. */
+    private void notifyAdmins(String subject, String body) {
+        try {
+            userRepository.findAll().stream()
+                    .filter(u -> u.getEmail() != null && !u.getEmail().isBlank())
+                    .filter(u -> u.getRole() == com.forexbot.model.User.Role.ADMIN)
+                    .forEach(u -> emailService.sendSystemAlert(u.getEmail(), subject, body));
+        } catch (Exception ex) {
+            log.error("Failed to send admin alert: {}", ex.getMessage());
+        }
     }
 
     // ── Retention: delete HOLD signals older than 7 days ─────────────────────

@@ -35,6 +35,9 @@ _DXY_SYMBOL = "DXY"
 # One strategy instance per symbol
 _strategies: dict[str, HybridStrategy] = {}
 
+# Model stats updated after each training run — served by /models/stats
+_model_stats: dict[str, dict] = {}
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -181,7 +184,49 @@ async def train(symbol: str):
 
     # Reload predictor
     _strategies[symbol] = HybridStrategy(symbol)
+
+    # Store stats for /models/stats endpoint
+    _model_stats[symbol] = {
+        "symbol":     symbol,
+        "accuracy":   round(result["accuracy"] * 100, 1),
+        "samples":    result["samples"],
+        "trained_at": datetime.now(timezone.utc).strftime("%d %b %Y %H:%M UTC"),
+    }
+
     return {"symbol": symbol, "trained": True, **result}
+
+
+@app.get("/price/{symbol}")
+async def price(symbol: str):
+    """
+    Return the latest close price and ATR for a symbol.
+    Uses the candle cache (55-min TTL) — fast for H1-signal-based trailing stops.
+    Called by TrailingStopService every 5 minutes.
+    """
+    from indicators.technical import add_all_indicators
+    symbol = symbol.upper()
+    if symbol not in _strategies:
+        raise HTTPException(404, f"Symbol {symbol} not configured")
+    try:
+        df = await asyncio.wait_for(_fetch_candles(symbol), timeout=6.0)
+    except asyncio.TimeoutError:
+        raise HTTPException(503, f"Candle fetch timed out for {symbol}")
+    except Exception as e:
+        raise HTTPException(503, str(e))
+
+    enriched = add_all_indicators(df)
+    last = enriched.iloc[-1]
+    return {
+        "symbol": symbol,
+        "close":  round(float(last["close"]), 5),
+        "atr":    round(float(last["atr"]),   6),
+    }
+
+
+@app.get("/models/stats")
+def models_stats():
+    """Return training stats for all symbols. Populated after each /train call."""
+    return _model_stats
 
 
 @app.get("/scan")
