@@ -7,12 +7,12 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class PublicController {
 
-    /** Landing page — public. Authenticated users bounce straight to the app. */
+    /** Root redirect — authenticated users go to dashboard, everyone else to login. */
     @GetMapping("/")
     public String landing(Authentication authentication) {
         if (authentication != null && authentication.isAuthenticated()) {
             return "redirect:/dashboard";
         }
-        return "public/landing";
+        return "redirect:/login";
     }
 }
