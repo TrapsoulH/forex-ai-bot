@@ -5,12 +5,15 @@ import com.forexbot.model.SymbolSettings;
 import com.forexbot.repository.BotConfigRepository;
 import com.forexbot.service.SymbolSettingsService;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -34,11 +37,14 @@ public class BotSettingsController {
 
     private final BotConfigRepository   configRepository;
     private final SymbolSettingsService symbolSettingsService;
+    private final WebClient             signalClient;
 
     public BotSettingsController(BotConfigRepository configRepository,
-                                 SymbolSettingsService symbolSettingsService) {
+                                 SymbolSettingsService symbolSettingsService,
+                                 @Qualifier("signalWebClient") WebClient signalClient) {
         this.configRepository      = configRepository;
         this.symbolSettingsService = symbolSettingsService;
+        this.signalClient          = signalClient;
     }
 
     @GetMapping("/bot")
@@ -49,9 +55,24 @@ public class BotSettingsController {
                     .map(BotConfig::getConfigValue)
                     .orElse(""));
         }
+        // Fetch ML model stats from signal engine — shown per-symbol in the card grid.
+        // Non-blocking: if the engine is down we just show nothing for stats.
+        Map<?, ?> modelStats = null;
+        try {
+            modelStats = signalClient.get()
+                    .uri("/models/stats")
+                    .retrieve()
+                    .bodyToMono(Map.class)
+                    .timeout(Duration.ofSeconds(5))
+                    .block();
+        } catch (Exception e) {
+            log.warn("Could not fetch model stats from signal engine: {}", e.getMessage());
+        }
+
         model.addAttribute("values", values);
         model.addAttribute("keyMeta", KEY_META);
         model.addAttribute("symbolSettings", symbolSettingsService.findAll());
+        model.addAttribute("modelStats", modelStats != null ? modelStats : Map.of());
         return "settings/bot";
     }
 

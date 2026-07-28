@@ -206,6 +206,42 @@ public class EmailService {
     }
 
 
+    // ── System / health alerts ───────────────────────────────────────────────
+
+    /**
+     * Generic system alert — used for signal-engine health alerting and other
+     * infrastructure events.  No Thymeleaf template needed; the body is plain text
+     * wrapped in minimal HTML.
+     */
+    public void sendSystemAlert(String toEmail, String subject, String body) {
+        if (!isMailConfigured()) {
+            log.warn("╔══ SYSTEM ALERT (dev mode — no SMTP) ═══════════════════════════╗");
+            log.warn("  Subject : {}", subject);
+            log.warn("  To      : {}", toEmail);
+            log.warn("  Body    : {}", body);
+            log.warn("╚════════════════════════════════════════════════════════════════╝");
+            return;
+        }
+        try {
+            MimeMessage msg = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(msg, false, "UTF-8");
+            helper.setFrom("Blue Ocean Hub <" + fromAddress + ">");
+            helper.setTo(toEmail);
+            helper.setSubject(subject);
+            String html = "<html><body style=\"font-family:sans-serif;padding:20px;background:#0f172a;color:#e2e8f0\">"
+                        + "<h3 style=\"color:#f87171;margin-top:0\">" + subject + "</h3>"
+                        + "<p style=\"color:#cbd5e1;line-height:1.6\">" + body + "</p>"
+                        + "<hr style=\"border:none;border-top:1px solid #1e3a5f;margin:20px 0\"/>"
+                        + "<p style=\"font-size:.8rem;color:#475569\">Blue Ocean Hub — automated alert</p>"
+                        + "</body></html>";
+            helper.setText(html, true);
+            mailSender.send(msg);
+            log.info("System alert sent → {} | subject: {}", toEmail, subject);
+        } catch (Exception e) {
+            log.error("Failed to send system alert to {}: {}", toEmail, e.getMessage());
+        }
+    }
+
     // ── Internal helpers ──────────────────────────────────────────────────────
 
     private void sendHtml(String to, String subject, String templateName, Context ctx) {
