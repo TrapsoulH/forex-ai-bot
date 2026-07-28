@@ -100,4 +100,29 @@ def compute_features(df: pd.DataFrame) -> pd.DataFrame:
     # OBV 1-period % change
     features["obv_change"] = df["obv"].pct_change()
 
+    # ── New features (V3) ────────────────────────────────────────────────────
+
+    # ATR percentile — where does current volatility rank vs the last 50 candles?
+    # 0 = quietest period, 1 = most volatile. Lets the model treat the same RSI/ADX
+    # reading differently during a breakout vs a flat, quiet session.
+    features["atr_percentile"] = df["atr"].rolling(50).rank(pct=True)
+
+    # VWAP deviation — how far price has drifted from the 20-candle
+    # volume-weighted average price (the market's "fair value").
+    # Negative = below fair value (stretched down, BUY bias)
+    # Positive = above fair value (stretched up, SELL bias)
+    vwap = (
+        (df["close"] * df["volume"]).rolling(20).sum()
+        / df["volume"].rolling(20).sum()
+    )
+    features["vwap_dev"] = (df["close"] - vwap) / df["close"]
+
+    # Time-of-day encoding — sine + cosine of the UTC hour.
+    # A sine/cosine pair keeps 23:00 and 01:00 close to each other (circular).
+    # Captures session effects: London open (07:00 UTC) has high follow-through,
+    # Asian session overnight is noisier with more false signals.
+    hour = pd.to_datetime(df["time"]).dt.hour
+    features["hour_sin"] = np.sin(2 * np.pi * hour / 24)
+    features["hour_cos"] = np.cos(2 * np.pi * hour / 24)
+
     return features.dropna()
