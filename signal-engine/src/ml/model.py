@@ -2,9 +2,17 @@
 XGBoost model for direction prediction.
 
 Labels:
-  1  = BUY  (next candle closes higher by > 0.5× ATR)
- -1  = SELL (next candle closes lower  by > 0.5× ATR)
-  0  = HOLD (inside the dead zone)
+  1  = BUY  — a long trade from this candle's close would have hit TP before SL
+ -1  = SELL — a short trade from this candle's close would have hit TP before SL
+  0  = HOLD — ambiguous or no clean outcome within the forward window
+
+Labeling uses forward ATR-outcome logic that mirrors the actual trading strategy:
+  TP = entry ± tp_mult × ATR(14)   (default 4.5×)
+  SL = entry ∓ sl_mult × ATR(14)   (default 1.5×)
+  max_bars = 20 H1 candles forward look (~20 trading hours)
+
+This is more meaningful than next-candle direction because it directly
+measures whether the signal would have been profitable at the configured R:R.
 
 Usage:
   trainer = ModelTrainer("EURUSD")
@@ -30,21 +38,71 @@ def _model_path(symbol: str) -> str:
     return os.path.join(settings.model_dir, f"{symbol}_xgb.joblib")
 
 
-def _make_labels(df: pd.DataFrame, features: pd.DataFrame, atr_mult: float = 0.5) -> pd.Series:
-    """Create forward-looking labels aligned with feature rows."""
-    # Next candle close change
-    future_close = df["close"].shift(-1)
-    atr = df["atr"] if "atr" in df.columns else pd.Series(index=df.index, dtype=float)
+def _make_labels(
+    df: pd.DataFrame,
+    features: pd.DataFrame,
+    sl_mult: float = 1.5,
+    tp_mult: float = 4.5,
+    max_bars: int = 20,
+) -> pd.Series:
+    """
+    Forward ATR-outcome labeling — mirrors how the bot actually trades.
 
-    diff = future_close - df["close"]
-    threshold = atr * atr_mult
+    For each candle, simulates placing both a BUY and SELL from the close:
+      BUY  (+1): high hits  entry + tp_mult×ATR  before low  hits entry - sl_mult×ATR
+      SELL (-1): low  hits  entry - tp_mult×ATR  before high hits entry + sl_mult×ATR
+      HOLD  (0): ambiguous (both or neither resolved) within max_bars candles
 
-    label = pd.Series(0, index=df.index)
-    label[diff > threshold] = 1
-    label[diff < -threshold] = -1
+    Default sl_mult=1.5 and tp_mult=4.5 matches the bot's R:R (1:3).
+    max_bars=20 H1 candles ≈ 20 trading hours of forward look.
+    """
+    closes = df["close"].values
+    highs  = df["high"].values
+    lows   = df["low"].values
+    atrs   = df["atr"].values if "atr" in df.columns else np.zeros(len(df))
+    n      = len(df)
 
-    # Align with feature index (features may have fewer rows due to dropna)
-    return label.reindex(features.index).dropna().astype(int)
+    labels = np.zeros(n, dtype=int)
+
+    for i in range(n - max_bars):
+        atr = atrs[i]
+        if np.isnan(atr) or atr <= 0:
+            continue
+
+        entry   = closes[i]
+        buy_tp  = entry + tp_mult * atr
+        buy_sl  = entry - sl_mult * atr
+        sell_tp = entry - tp_mult * atr
+        sell_sl = entry + sl_mult * atr
+
+        buy_result  = 0   # 1 = TP hit, -1 = SL hit, 0 = timeout
+        sell_result = 0
+
+        for j in range(i + 1, min(i + max_bars + 1, n)):
+            if buy_result == 0:
+                if highs[j] >= buy_tp:
+                    buy_result = 1
+                elif lows[j] <= buy_sl:
+                    buy_result = -1
+
+            if sell_result == 0:
+                if lows[j] <= sell_tp:
+                    sell_result = 1
+                elif highs[j] >= sell_sl:
+                    sell_result = -1
+
+            if buy_result != 0 and sell_result != 0:
+                break  # both resolved — no need to look further
+
+        # Only assign a directional label when one side cleanly wins
+        if buy_result == 1 and sell_result != 1:
+            labels[i] = 1    # clear BUY opportunity
+        elif sell_result == 1 and buy_result != 1:
+            labels[i] = -1   # clear SELL opportunity
+        # else: 0 — both TP hit (too volatile), neither hit (no move), or SL first
+
+    label_series = pd.Series(labels, index=df.index)
+    return label_series.reindex(features.index).dropna().astype(int)
 
 
 class ModelTrainer:
