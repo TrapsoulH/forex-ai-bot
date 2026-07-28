@@ -454,6 +454,25 @@
           <div class="hist-stat"><span class="hist-stat-lbl">SELL fired</span><span id="hstat-sell" class="hist-stat-val h-sell">—</span></div>
           <div class="hist-stat"><span class="hist-stat-lbl">Acted on</span><span id="hstat-acted" class="hist-stat-val">—</span></div>
         </div>
+        <!-- ── Custom range filters ── -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px">
+          <select id="hist-sym-filter" onchange="applyHistFilters()"
+                  style="background:#0f172a;border:1px solid #1e3a5f;color:#e2e8f0;border-radius:8px;padding:5px 10px;font-size:.78rem;outline:none;cursor:pointer">
+            <option value="">All symbols</option>
+          </select>
+          <div style="display:flex;gap:4px">
+            <button class="hist-chip active" data-dir="" onclick="setHistDir(this,'')">All</button>
+            <button class="hist-chip" data-dir="BUY" onclick="setHistDir(this,'BUY')">BUY</button>
+            <button class="hist-chip" data-dir="SELL" onclick="setHistDir(this,'SELL')">SELL</button>
+            <button class="hist-chip" data-dir="HOLD" onclick="setHistDir(this,'HOLD')">HOLD</button>
+          </div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:.78rem;color:#64748b;cursor:pointer;user-select:none">
+            <input type="checkbox" id="hist-traded-only" onchange="applyHistFilters()"
+                   style="accent-color:#3b82f6;width:14px;height:14px;cursor:pointer"/>
+            Traded only
+          </label>
+          <span id="hist-filter-count" style="font-size:.75rem;color:#475569;margin-left:auto"></span>
+        </div>
         <div class="table-wrap">
           <table id="hist-table">
             <thead>
@@ -929,10 +948,51 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Signal history ──────────────────────────────────────────
 
   let _histRange = '1h';
+  let _histDirFilter = '';   // '' = all, 'BUY', 'SELL', 'HOLD'
+
+  // Filter chips inside custom-range table (direction buttons)
+  window.setHistDir = function(el, dir) {
+    _histDirFilter = dir;
+    document.querySelectorAll('#hist-table-wrap .hist-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+    applyHistFilters();
+  };
+
+  // Apply symbol + direction + traded-only filters to the custom range table rows
+  window.applyHistFilters = function() {
+    const sym       = document.getElementById('hist-sym-filter')?.value || '';
+    const tradedOnly = document.getElementById('hist-traded-only')?.checked || false;
+    let visible = 0;
+
+    document.querySelectorAll('#hist-tbody tr').forEach(row => {
+      if (row.querySelector('.empty-state')) { row.style.display = ''; return; }
+      const rowSym    = row.dataset.symbol || '';
+      const rowDir    = row.dataset.dir    || '';
+      const rowActed  = row.dataset.acted  === 'true';
+
+      const symMatch    = !sym          || rowSym === sym;
+      const dirMatch    = !_histDirFilter || rowDir === _histDirFilter;
+      const actedMatch  = !tradedOnly   || rowActed;
+
+      const show = symMatch && dirMatch && actedMatch;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    const countEl = document.getElementById('hist-filter-count');
+    if (countEl) {
+      const total = document.querySelectorAll('#hist-tbody tr:not([style*="none"])').length;
+      const allRows = document.querySelectorAll('#hist-tbody tr').length;
+      countEl.textContent = (sym || _histDirFilter || tradedOnly)
+        ? `${visible} of ${allRows} shown`
+        : '';
+    }
+  };
 
   window.setHistRange = function(el, range) {
     _histRange = range;
-    document.querySelectorAll('.hist-chip').forEach(c => c.classList.remove('active'));
+    // Only reset the time-range chips (top row), not the direction chips inside the table
+    document.querySelectorAll('.hist-filters .hist-chip').forEach(c => c.classList.remove('active'));
     el.classList.add('active');
     const pickers = document.getElementById('hist-custom-pickers');
     if (range === 'custom') {
@@ -1019,13 +1079,30 @@ document.addEventListener('DOMContentLoaded', () => {
               '<i data-lucide="search"></i><p>No signals found in this range</p></div></td></tr>';
             lucide.createIcons(); return;
           }
+          // Populate symbol dropdown from this data set
+          const symSel = document.getElementById('hist-sym-filter');
+          if (symSel) {
+            const uniq = [...new Set(data.signals.map(s => s.symbol))].sort();
+            symSel.innerHTML = '<option value="">All symbols</option>' +
+              uniq.map(s => `<option value="${s}">${s}</option>`).join('');
+            symSel.value = ''; // reset to All on each load
+          }
+          // Reset direction filter on fresh load
+          _histDirFilter = '';
+          document.querySelectorAll('#hist-table-wrap .hist-chip').forEach(c => {
+            c.classList.toggle('active', c.dataset.dir === '');
+          });
+          if (document.getElementById('hist-traded-only')) {
+            document.getElementById('hist-traded-only').checked = false;
+          }
+
           tbody.innerHTML = data.signals.map(s => {
             const confVal = (s.confidence && parseFloat(s.confidence) > 0)
               ? s.confidence : (s.mlConfidence && parseFloat(s.mlConfidence) > 0 ? s.mlConfidence : null);
             const acted = s.actedOn
               ? '<span style="color:#34d399;margin-left:4px"><i data-lucide="check-circle" style="width:13px;height:13px"></i></span>'
               : '';
-            return `<tr>
+            return `<tr data-symbol="${s.symbol}" data-dir="${s.direction}" data-acted="${s.actedOn}">
               <td style="white-space:nowrap;color:#64748b;font-size:.8rem">${s.createdAt ?? '—'}</td>
               <td style="font-weight:600;color:#e2e8f0">${s.symbol}</td>
               <td><span class="badge ${badgeCls(s.technicalSignal)}">${s.technicalSignal ?? '—'}</span></td>
@@ -1036,6 +1113,7 @@ document.addEventListener('DOMContentLoaded', () => {
             </tr>`;
           }).join('');
           lucide.createIcons();
+          applyHistFilters();
 
         } else {
           // ── Preset ranges: show per-symbol summary cards ────────────────
