@@ -204,10 +204,9 @@ Debug endpoint: `GET http://localhost:8002/debug/{symbol}` — raw indicator val
   - Phase 2 (profit ≥ 3×ATR): trail SL at (current − 1×ATR); only advances, never widens
 
 ### Email Notifications
-- Trade open alerts → ADMIN users on every BUY/SELL (Brevo SMTP; console log in dev mode)
-- Trade close alerts → ADMIN users when a trade closes
-- Signal engine health alerts → ADMIN users if engine unreachable for 2+ consecutive health checks (~4 min); recovery email on restore
-- Weekly review email → every Friday 18:00 UTC (signals, P&L, best/worst pair)
+- Trade open/close alerts → ADMIN users only (fire-and-forget, never blocks trade execution)
+- Signal engine health alerts → ADMIN users if engine unreachable for 2+ consecutive checks; recovery email on restore
+- Weekly review → **all users** every Friday 18:00 UTC (signals, P&L, best/worst pair)
 - Invite + password reset emails with branded templates
 
 ### Auth & Security

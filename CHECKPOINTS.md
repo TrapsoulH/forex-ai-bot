@@ -185,6 +185,8 @@ Track your progress through each phase. Check off items as you complete them.
 - [x] **CP-V2-15** Friendly error cards — dashed border, Disabled/Unavailable badge, explains no-history vs genuine error
 - [x] **CP-V2-16** Signal history filters — symbol dropdown, direction chips (All/BUY/SELL/HOLD), "Traded only" checkbox; all three apply with AND logic
 - [x] **CP-V2-17** US100 auto-enable — weekly retrain probes disabled symbols; auto-enables when broker history reaches 400 samples
+- [x] **CP-V2-25** Routing fix — `/` shows landing page for guests (login button visible); all users including ADMIN land on `/dashboard` after login (not `/admin/users`)
+- [x] **CP-V2-26** US500 re-enabled — was incorrectly disabled in DB; fixed via direct UPDATE on GCP
 
 ### Trailing Stop & Risk
 - [x] **CP-V2-18** V9 migration — `atr` column added to `trades` table
@@ -256,11 +258,11 @@ Track your progress through each phase. Check off items as you complete them.
 - [x] **CP-52** Cloudflared as systemd service — survives VM reboots; Docker `restart: unless-stopped` for containers
 
 ### Step 5 — UAT Validation
-- [ ] **CP-53** First BUY or SELL signal produced on cloud — both gates agree
+- [ ] **CP-53** First BUY or SELL signal produced on cloud — both gates agree (17,963 signals fired as of Jul 2026 — all HOLD; ADX filter working correctly, waiting for trending market)
 - [ ] **CP-54** First paper trade opened and visible on cloud dashboard
 - [ ] **CP-55** 48-hour unattended run — no crashes, no missed scans
 - [ ] **CP-56** 20+ paper trades accumulated — win rate calculated
-- [ ] **CP-57** Weekly review email received from cloud (proves scheduler running)
+- [x] **CP-57** Weekly review email received from cloud — confirmed Fri 24 Jul 2026 (proves scheduler running on GCP)
 
 ### Step 6 — Multi-Trader (Post-UAT, Phase 5b)
 > Only start this after CP-57 is complete and win rate is satisfactory.
@@ -382,8 +384,22 @@ KNOWN LIMITATION — signal timestamps:
   local time is 19:02, the display is correct UTC — not a bug, but a UX improvement
   to add SAST conversion (planned).
 
+EMAIL RECIPIENTS (current):
+  Trade open / close alerts  → ADMIN users only
+  Signal engine health alert → ADMIN users only
+  Weekly review              → ALL users (every user with an email address in the DB)
+  When you invite a new user they will receive the weekly review automatically.
+
 ROLE MODEL (current vs future):
   Current: ADMIN (operator + trader) / USER (observer). Trade emails go to ADMIN only.
   Phase 5b: ADMIN / TRADER (own MT5, get trade alerts) / INVESTOR (read-only, weekly review).
   The current ADMIN role effectively IS the trader in the single-account UAT setup.
+
+LIVE BOT OBSERVATIONS (as of Jul 2026):
+  17,963 signals scanned, 0 trades opened.
+  All signals returning HOLD — market in low-ADX ranging phase (ADX mostly 14–20).
+  This is correct behaviour: the ADX ≥ 20 gate is intentionally filtering out choppy markets.
+  First trade expected when a clear trend forms (ADX breaks above 20 with SMA alignment).
+  Weekly review email confirmed received Fri 24 Jul 2026 — GCP scheduler confirmed running.
+  Weekly auto-retrain running every Sunday 03:00 SAST for all 9 symbols.
 ```
