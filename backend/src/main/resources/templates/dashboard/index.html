@@ -212,6 +212,8 @@
       <div class="section-title" style="margin-bottom:0"><i data-lucide="globe"></i> Market overview</div>
       <div style="display:flex;align-items:center;gap:10px">
         <span id="mo-updated" style="font-size:.75rem;color:#475569">—</span>
+        <span style="font-size:.75rem;color:#334155">·</span>
+        <span id="mo-clock" style="font-size:.75rem;color:#334155">—</span>
         <button id="mo-refresh-btn" onclick="loadMarketOverview()" style="background:none;border:1px solid rgba(255,255,255,.1);color:#64748b;border-radius:8px;padding:4px 12px;font-size:.78rem;cursor:pointer;display:flex;align-items:center;gap:5px">
           <i data-lucide="refresh-cw" style="width:12px;height:12px"></i> Refresh
         </button>
@@ -903,8 +905,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     lucide.createIcons();
 
-    const now = new Date().toLocaleTimeString('en-ZA', { timeZone:'Africa/Johannesburg', hour:'2-digit', minute:'2-digit', hour12:false });
-    document.getElementById('mo-updated').textContent = `H1 · updated ${now} SAST`;
+    window._moLastUpdated = Date.now();
+    document.getElementById('mo-updated').textContent = 'H1 · updated just now';
   }
 
   // silent=true  → keep existing cards visible while fetching (SSE-triggered background refresh)
@@ -921,7 +923,7 @@ document.addEventListener('DOMContentLoaded', () => {
       lucide.createIcons();
     } else {
       // Background refresh — show a subtle "Updating…" label, keep cards visible
-      if (updEl) updEl.textContent = 'Updating…';
+      if (updEl) updEl.textContent = 'H1 · updating…';
     }
 
     if (btn) btn.disabled = true;
@@ -941,6 +943,35 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   loadMarketOverview();
+
+  // Live SAST clock — ticks every second
+  function tickClock() {
+    const sast = new Date().toLocaleString('en-US', { timeZone: 'Africa/Johannesburg', hour: '2-digit', minute: '2-digit', hour12: false });
+    const el = document.getElementById('mo-clock');
+    if (el) el.textContent = sast + ' SAST';
+  }
+  tickClock();
+  setInterval(tickClock, 1000);
+
+  // Relative "updated X min ago" label + amber glow on Refresh after 5 min
+  setInterval(() => {
+    if (!window._moLastUpdated) return;
+    const mins = Math.floor((Date.now() - window._moLastUpdated) / 60000);
+    const updEl = document.getElementById('mo-updated');
+    const btn   = document.getElementById('mo-refresh-btn');
+    if (updEl) updEl.textContent = mins < 1 ? 'H1 · updated just now' : `H1 · updated ${mins} min ago`;
+    if (btn) {
+      if (mins >= 5) {
+        btn.style.borderColor  = 'rgba(251,191,36,.5)';
+        btn.style.color        = '#fbbf24';
+        btn.style.boxShadow    = '0 0 8px rgba(251,191,36,.2)';
+      } else {
+        btn.style.borderColor  = 'rgba(255,255,255,.1)';
+        btn.style.color        = '#64748b';
+        btn.style.boxShadow    = 'none';
+      }
+    }
+  }, 60000);
 
   // Auto-refresh market overview on each SSE signal event (silent)
   document.addEventListener('mo-refresh', () => loadMarketOverview(true));
