@@ -118,10 +118,18 @@ python src/main.py
 ### 4b. Train ML models (first run only, or after market regime change)
 ```bash
 # signal-engine must be running — trigger via API (no standalone script)
+# US index symbols (US100/US500/US30) need ~400 samples to auto-enable;
+# they will auto-enable after the weekly retrain once the broker has enough history.
 curl -X POST http://localhost:8002/train/EURUSD
 curl -X POST http://localhost:8002/train/GBPUSD
-curl -X POST http://localhost:8002/train/USDJPY
 curl -X POST http://localhost:8002/train/AUDUSD
+curl -X POST http://localhost:8002/train/XAUUSD
+curl -X POST http://localhost:8002/train/EURJPY
+curl -X POST http://localhost:8002/train/AUDJPY
+curl -X POST http://localhost:8002/train/US100
+curl -X POST http://localhost:8002/train/US500
+curl -X POST http://localhost:8002/train/US30
+# Model stats (accuracy, samples, trained_at) visible at /models/stats and in Bot Settings UI
 ```
 
 ### 5. Start backend (Flyway migrations run on startup)
@@ -147,6 +155,9 @@ Schema is managed exclusively by Flyway — never by Hibernate DDL auto.
 | `V4__symbol_settings.sql` | Per-symbol SL/TP/volume/enabled — seeds 4 default pairs |
 | `V5__add_phone_to_users.sql` | Phone field on users (SA format `+27XXXXXXXXX`) |
 | `V6__email_verification_and_account_lockout.sql` | Email verified flag + verification token + persistent login lockout |
+| `V7__symbol_settings_atr_mult.sql` | `sl_atr_mult` / `tp_atr_mult` on `symbol_settings` — per-symbol ATR-based SL/TP sizing |
+| `V8__symbol_settings_v2_symbols.sql` | Strategy V2 symbols — remove USDJPY, seed XAUUSD, EURJPY, AUDJPY, US100, US500, US30 |
+| `V9__trade_atr_sl_tp.sql` | `atr` column on `trades` — required for trailing stop loss calculations |
 
 > Never edit an existing migration after it has been applied. Always create a new versioned file.
 
@@ -164,21 +175,39 @@ Schema is managed exclusively by Flyway — never by Hibernate DDL auto.
 - Market-hours auto-detection — nav badge shows Bot Running / Market Closed / Bot Stopped
 - Paper trading mode — toggle in Bot Settings (no real orders placed)
 
-### Signal Strategy (Hybrid Two-Gate)
-- **Technical gate** — EMA trend alignment + RSI (30–65 BUY / 35–70 SELL) + MACD sign confirmation; all three must pass
-- **AI gate** — XGBoost model must predict the same direction with ≥ 55% confidence
-- Gate optimisation: AI model is skipped entirely if the technical gate returns HOLD (saves CPU)
-- H1 candle cache (55 min TTL) eliminates redundant MT5 bridge calls on every scan cycle
-- Debug endpoint: `GET http://localhost:8002/debug/{symbol}` — shows all indicator values and gate decisions
+### Signal Strategy — V2 Hybrid Two-Gate
+
+**Symbols (9):** EURUSD, GBPUSD, AUDUSD, XAUUSD, EURJPY, AUDJPY, US100, US500, US30
+
+**Technical gate:**
+- BUY: SMA5 > SMA30 > SMA62, close > SMA200, ADX ≥ 20 (trending), RSI 30–65
+- SELL: SMA5 < SMA30 < SMA62, close < SMA200, ADX ≥ 20, RSI 35–70
+- DXY filter: if USD Index trending strongly, opposing USD-pair signals are filtered out
+- US session gate: US100/US500/US30 only scanned 13:30–20:00 UTC Mon–Fri (15:30–22:00 SAST)
+
+**AI gate (XGBoost):**
+- 16 features: SMA momentum, ADX strength, RSI zone, Bollinger position, ATR%, candle body/wick, OBV change, ATR percentile, VWAP deviation, time-of-day sin/cos
+- Labels: forward ATR-outcome (did TP hit before SL within 20 H1 candles?) — aligns with actual trading R:R
+- Accuracy: 75%+ across all symbols after V2 retraining
+- Minimum confidence: 55% (configurable in Bot Settings)
+- Skipped entirely if technical gate = HOLD (saves CPU)
+
+**H1 candle cache (55 min TTL)** — eliminates redundant MT5 bridge calls on every scan cycle.
+Debug endpoint: `GET http://localhost:8002/debug/{symbol}` — raw indicator values + gate decisions.
 
 ### Risk Management
-- Global defaults: SL pips, TP pips, lot size, max open trades
-- Per-symbol overrides: individual SL/TP/volume/enabled per pair (EURUSD, GBPUSD, USDJPY, AUDUSD)
-- Live R:R ratio display in Bot Settings UI
+- Global defaults: SL pips, TP pips, lot size, max open trades (fallback when ATR unavailable)
+- Per-symbol overrides: ATR-based SL/TP multipliers, volume, enabled toggle per pair
+- Live R:R ratio display in Bot Settings UI; ML model accuracy + sample count shown per symbol
+- **Trailing stop loss** (`TrailingStopService`, every 5 min):
+  - Phase 1 (profit ≥ 2×ATR): move SL to entry price (break-even, can't lose)
+  - Phase 2 (profit ≥ 3×ATR): trail SL at (current − 1×ATR); only advances, never widens
 
 ### Email Notifications
-- Trade open alerts → ADMIN users (Brevo SMTP; console log in dev mode)
-- Weekly review email → all users → every Friday 18:00 UTC (signals, P&L, best/worst pair)
+- Trade open alerts → ADMIN users on every BUY/SELL (Brevo SMTP; console log in dev mode)
+- Trade close alerts → ADMIN users when a trade closes
+- Signal engine health alerts → ADMIN users if engine unreachable for 2+ consecutive health checks (~4 min); recovery email on restore
+- Weekly review email → every Friday 18:00 UTC (signals, P&L, best/worst pair)
 - Invite + password reset emails with branded templates
 
 ### Auth & Security
@@ -219,11 +248,12 @@ forex-ai-bot/
 │
 ├── signal-engine/                             # Python: strategy + ML
 │   └── src/
-│       ├── main.py
+│       ├── main.py                            # FastAPI: /signal, /price, /train, /market-overview, /models/stats
 │       ├── config.py
-│       ├── indicators/technical.py            # RSI, MACD, EMA, Bollinger, ATR, OBV
-│       ├── ml/model.py                        # XGBoost train + predict
-│       └── strategy/hybrid.py                # Two-gate signal combiner
+│       ├── indicators/technical.py            # SMA(5/30/62/100/200), ADX, RSI(9), ATR, Bollinger, OBV, price action
+│       ├── ml/model.py                        # XGBoost — forward ATR-outcome labels, 16 features
+│       ├── strategy/hybrid.py                 # Two-gate signal combiner
+│       └── strategy/dxy_filter.py             # USD Index trend filter
 │
 └── backend/                                   # Java 21: Spring Boot SaaS
     └── src/main/
@@ -265,10 +295,11 @@ forex-ai-bot/
         │       ├── EmailService.java           # Brevo SMTP; console fallback in dev
         │       ├── MarketHoursService.java     # Forex session open/close detection
         │       ├── MarketSchedulerService.java # Scheduled market-open/close events
-        │       ├── SignalPollerService.java    # @Scheduled scan loop; SSE broadcast
+        │       ├── SignalPollerService.java    # @Scheduled scan + health check; SSE broadcast
         │       ├── SseService.java             # SseEmitter registry + broadcast
         │       ├── SymbolSettingsService.java  # Per-symbol risk CRUD + getOrCreate
-        │       ├── TradeService.java           # openTrade / closeTrade
+        │       ├── TradeService.java           # openTrade / closeTrade (saves sl/tp/atr)
+        │       ├── TrailingStopService.java    # @Scheduled every 5 min — break-even + trail
         │       ├── UserService.java
         │       ├── WeeklyEmailScheduler.java   # Friday 18:00 UTC email trigger
         │       ├── WeeklyReviewService.java    # Weekly stats aggregation
@@ -277,10 +308,10 @@ forex-ai-bot/
             ├── application.yml
             ├── application-dev.yml
             ├── db/migration/
-            │   ├── V1__init_schema.sql
-            │   ├── V2__users.sql
-            │   ├── V3__user_fullname_and_password_reset.sql
-            │   └── V4__symbol_settings.sql
+            │   ├── V1 … V6 (initial schema, users, auth, symbol_settings)
+            │   ├── V7__symbol_settings_atr_mult.sql
+            │   ├── V8__symbol_settings_v2_symbols.sql
+            │   └── V9__trade_atr_sl_tp.sql
             ├── static/
             │   ├── css/app.css                # Blue Ocean Hub design system
             │   └── favicon.svg

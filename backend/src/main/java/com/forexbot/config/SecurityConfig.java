@@ -68,11 +68,7 @@ public class SecurityConfig {
             )
             .formLogin(form -> form
                 .loginPage("/login")
-                .successHandler((req, res, auth) -> {
-                    boolean isAdmin = auth.getAuthorities().stream()
-                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-                    res.sendRedirect(isAdmin ? "/admin/users" : "/dashboard");
-                })
+                .successHandler((req, res, auth) -> res.sendRedirect("/dashboard"))
                 .failureHandler((req, res, ex) -> {
                     if (ex instanceof LockedException) {
                         res.sendRedirect("/login?locked");
@@ -99,11 +95,7 @@ public class SecurityConfig {
         if (isOAuth2Enabled()) {
             http.oauth2Login(oauth -> oauth
                 .loginPage("/login")
-                .successHandler((req, res, auth) -> {
-                    boolean isAdmin = auth.getAuthorities().stream()
-                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-                    res.sendRedirect(isAdmin ? "/admin/users" : "/dashboard");
-                })
+                .successHandler((req, res, auth) -> res.sendRedirect("/dashboard"))
                 .userInfoEndpoint(u -> u.userService(oauth2UserService))
             );
             log.info("Security: Google OAuth2 enabled");
