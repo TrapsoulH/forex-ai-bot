@@ -39,11 +39,31 @@ _strategies: dict[str, HybridStrategy] = {}
 _model_stats: dict[str, dict] = {}
 
 
+async def _warm_candle_cache() -> None:
+    """
+    Pre-fill the candle cache for all symbols at startup — sequentially,
+    so we never hit MetaAPI's 5-concurrent-request rate limit.
+    By the time the first market-overview or signal request arrives,
+    all candles are already cached (55-min TTL) and requests are instant.
+    """
+    logger.info("Warming candle cache for all symbols ...")
+    # DXY first — small (100 candles), quick, needed by every symbol eval
+    await _fetch_dxy_candles()
+    for symbol in settings.symbols:
+        try:
+            await _fetch_candles(symbol)
+            logger.info(f"[{symbol}] Cache warmed")
+        except Exception as e:
+            logger.warning(f"[{symbol}] Cache warm-up failed (will retry on first request): {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     for symbol in settings.symbols:
         _strategies[symbol] = HybridStrategy(symbol)
         logger.info(f"Strategy initialised for {symbol}")
+    # Warm the cache in the background — don't block startup
+    asyncio.create_task(_warm_candle_cache())
     yield
 
 
@@ -75,7 +95,9 @@ async def _fetch_candles(symbol: str) -> pd.DataFrame:
     logger.debug(f"[{symbol}] Fetching fresh candles from MT5 bridge")
     url = f"{settings.mt5_bridge_url}/candles/{symbol}"
     params = {"timeframe": settings.timeframe, "count": settings.candle_count}
-    async with httpx.AsyncClient(timeout=15.0) as client:
+    # 30s timeout: MT5 bridge queues requests to stay under MetaAPI's 5-concurrent
+    # rate limit, so individual fetches can take 20–25 s when multiple symbols load.
+    async with httpx.AsyncClient(timeout=30.0) as client:
         resp = await client.get(url, params=params)
         resp.raise_for_status()
     data = resp.json()
@@ -208,7 +230,7 @@ async def price(symbol: str):
     if symbol not in _strategies:
         raise HTTPException(404, f"Symbol {symbol} not configured")
     try:
-        df = await asyncio.wait_for(_fetch_candles(symbol), timeout=6.0)
+        df = await asyncio.wait_for(_fetch_candles(symbol), timeout=20.0)
     except asyncio.TimeoutError:
         raise HTTPException(503, f"Candle fetch timed out for {symbol}")
     except Exception as e:
@@ -273,9 +295,11 @@ async def market_overview():
             logger.debug(f"[{symbol}] market-overview: no ML model — skipping (disabled/no history)")
             return symbol, {"symbol": symbol, "error": "no_history"}
         try:
-            # 6-second ceiling per symbol — if the broker has no history for
-            # this symbol it would otherwise block for the full httpx timeout.
-            df = await asyncio.wait_for(_fetch_candles(symbol), timeout=6.0)
+            # 20-second ceiling per symbol. The MT5 bridge semaphore caps
+            # MetaAPI concurrency at 4, so worst-case a symbol waits ~15 s for
+            # a slot — we need more than 6 s here to survive a cold cache.
+            # After the startup warm-up all fetches are instant cache hits.
+            df = await asyncio.wait_for(_fetch_candles(symbol), timeout=20.0)
             enriched = add_all_indicators(df)
             last = enriched.iloc[-1]
 

@@ -4,12 +4,18 @@ Price feed — fetches OHLCV candles and tick data via MetaAPI.
 Candles:   MetaAPI historical candles REST endpoint (via httpx).
 Tick/info: MetaAPI RPC connection (via SDK).
 """
+import asyncio
 import pandas as pd
 from datetime import datetime, timezone
 from loguru import logger
 from typing import Optional
 
 import mt5_client
+
+# MetaAPI allows a maximum of 5 concurrent historical-data requests per account.
+# Cap at 4 to leave one slot free and avoid rate-limit errors when multiple
+# symbols are fetched simultaneously (e.g. market-overview startup warm-up).
+_candle_sem = asyncio.Semaphore(4)
 
 
 # Maps the timeframe strings used by signal-engine → MetaAPI REST format
@@ -41,7 +47,8 @@ async def get_candles(symbol: str, timeframe: str = "H1", count: int = 500) -> O
 
     try:
         logger.debug(f"Fetching candles: {symbol}/{tf} limit={count}")
-        candles = await account.get_historical_candles(symbol, tf, limit=count)
+        async with _candle_sem:
+            candles = await account.get_historical_candles(symbol, tf, limit=count)
         if not candles:
             logger.warning(f"No candles returned for {symbol}/{timeframe}")
             return None
