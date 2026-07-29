@@ -45,8 +45,29 @@ async def _warm_candle_cache() -> None:
     so we never hit MetaAPI's 5-concurrent-request rate limit.
     By the time the first market-overview or signal request arrives,
     all candles are already cached (55-min TTL) and requests are instant.
+
+    Waits up to 90 s for the MT5 bridge to become healthy before starting,
+    because the bridge takes ~30 s to connect to MetaAPI after container start.
     """
-    logger.info("Warming candle cache for all symbols ...")
+    # Wait for MT5 bridge to be ready
+    bridge_ready = False
+    for attempt in range(18):  # 18 × 5 s = 90 s max wait
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                r = await client.get(f"{settings.mt5_bridge_url}/health")
+                if r.status_code == 200:
+                    bridge_ready = True
+                    break
+        except Exception:
+            pass
+        logger.info(f"Waiting for MT5 bridge to be ready (attempt {attempt + 1}/18) ...")
+        await asyncio.sleep(5)
+
+    if not bridge_ready:
+        logger.warning("MT5 bridge not ready after 90 s — skipping cache warm-up (will fetch on demand)")
+        return
+
+    logger.info("MT5 bridge ready — warming candle cache for all symbols ...")
     # DXY first — small (100 candles), quick, needed by every symbol eval
     await _fetch_dxy_candles()
     for symbol in settings.symbols:
