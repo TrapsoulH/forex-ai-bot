@@ -96,7 +96,7 @@ Track your progress through each phase. Check off items as you complete them.
 - [x] **CP-UI-22** Branded email templates — invite, password reset, trade notification, weekly review
 - [x] **CP-UI-23** Trade open email — fires to ADMIN users only on every BUY/SELL (fire-and-forget, never blocks trade)
 - [x] **CP-UI-24** Weekly review email — `WeeklyEmailScheduler` fires every Friday 18:00 UTC; includes signals, trades, P&L, best pair
-- [ ] **CP-UI-25** Trade close email — fires to ADMIN users when a trade is closed (quick win — see pre-Sunday checklist)
+- [x] **CP-UI-25** Trade close email — fires to ADMIN users when a trade is closed (already wired in `TradeService.closeTrade()`)
 
 ### Admin & Settings
 - [x] **CP-UI-26** Admin panel — user list, role changes, enable/disable, self-modification guard
@@ -106,7 +106,7 @@ Track your progress through each phase. Check off items as you complete them.
 
 ### Public Pages & Misc
 - [x] **CP-UI-30** Public landing page — hero, features, how it works, signal preview, CTA sections
-- [x] **CP-UI-31** Route split — `/` public landing, `/dashboard` authenticated app
+- [x] **CP-UI-31** Route split — `/` redirects to `/login` (unauthenticated) or `/dashboard` (authenticated)
 - [x] **CP-UI-32** Custom error pages — branded 404, 403, 500
 - [x] **CP-UI-33** Favicon — ⚡ SVG icon across all pages
 - [x] **CP-UI-34** Auto-dismiss flash alerts — fade out after 4 seconds
@@ -159,6 +159,46 @@ Track your progress through each phase. Check off items as you complete them.
 
 ---
 
+## Phase 4f — Strategy V2 + UX Improvements
+
+**Goal:** Replace the original EMA/MACD strategy with a more robust indicator set, expand to 9 symbols, improve ML labeling, and complete UX polish for production.
+
+### Signal Engine — Strategy V2
+- [x] **CP-V2-01** Indicator overhaul — replaced EMA/MACD with SMA(5/30/62/100/200), ADX(14), RSI(9), ATR(14), Bollinger(20), OBV, price action
+- [x] **CP-V2-02** DXY filter — fetches USD Index candles; filters USD-pair signals against dollar trend
+- [x] **CP-V2-03** Symbol expansion — 4 → 9 symbols: EURUSD, GBPUSD, AUDUSD, XAUUSD, EURJPY, AUDJPY, US100, US500, US30
+- [x] **CP-V2-04** US session gate — US100/US500/US30 only scanned 13:30–20:00 UTC Mon–Fri (15:30–22:00 SAST)
+- [x] **CP-V2-05** V8 migration — removed USDJPY, seeded 9 V2 symbols in `symbol_settings`
+- [x] **CP-V2-06** `application.yml` default symbols updated to full 9-symbol list
+- [x] **CP-V2-07** `LiveDataController` symbol order updated (EURUSD … US30)
+
+### ML Improvements
+- [x] **CP-V2-08** Forward ATR-outcome labeling — replaces next-candle direction; simulates TP/SL hit within 20 H1 candles (R:R 1:3 → TP=4.5×ATR, SL=1.5×ATR)
+- [x] **CP-V2-09** 3 new ML features — ATR percentile (rolling 50-period rank), VWAP deviation (20-candle), time-of-day sin/cos encoding (16 features total, up from 13)
+- [x] **CP-V2-10** Models retrained on V2 — accuracy lifted from ~40–63% to 75%+ across all symbols
+
+### Dashboard UX
+- [x] **CP-V2-11** Market overview cards — replaced stale table with live indicator cards (trend, RSI, ADX, SMA cross, ML signal) via `/market-overview`
+- [x] **CP-V2-12** Parallel market overview — `asyncio.gather` with 6s per-symbol timeout; ~1s load vs previous 15s+ sequential
+- [x] **CP-V2-13** Silent market overview refresh — SSE-triggered refresh keeps existing cards visible, shows "Updating…" instead of spinner
+- [x] **CP-V2-14** US session status badge on US100/US500/US30 cards — green "Scanning now · closes 22:00 SAST" or grey with next open time
+- [x] **CP-V2-15** Friendly error cards — dashed border, Disabled/Unavailable badge, explains no-history vs genuine error
+- [x] **CP-V2-16** Signal history filters — symbol dropdown, direction chips (All/BUY/SELL/HOLD), "Traded only" checkbox; all three apply with AND logic
+- [x] **CP-V2-17** US100 auto-enable — weekly retrain probes disabled symbols; auto-enables when broker history reaches 400 samples
+
+### Trailing Stop & Risk
+- [x] **CP-V2-18** V9 migration — `atr` column added to `trades` table
+- [x] **CP-V2-19** `TradeService.openTrade()` — now persists `slPrice`, `tpPrice`, `atr` on every trade row (were previously missing from builder)
+- [x] **CP-V2-20** `TrailingStopService` — @Scheduled every 5 min; phase 1: break-even at 2×ATR profit; phase 2: trail at current − 1×ATR from 3×ATR profit onwards
+
+### Signal Engine Health & Observability
+- [x] **CP-V2-21** Signal engine health alerting — `SignalPollerService` pings `/health` every 2 min; alert email to all ADMIN users after 2 consecutive failures; recovery email on restore
+- [x] **CP-V2-22** `EmailService.sendSystemAlert()` — generic inline-HTML alert method (no Thymeleaf template needed)
+- [x] **CP-V2-23** `/price/{symbol}` endpoint on signal engine — returns last H1 close + ATR from candle cache; used by `TrailingStopService`
+- [x] **CP-V2-24** Model accuracy in bot settings — signal engine stores stats after training; `/models/stats` endpoint; purple ML row in each per-symbol card showing accuracy %, sample count, and training date
+
+---
+
 ## Phase 4e — Pre-Market Readiness Check
 
 **Goal:** Confirm the system is ready before each trading week.
@@ -166,8 +206,8 @@ Track your progress through each phase. Check off items as you complete them.
 **Goal:** Confirm the system is ready before markets reopen Sunday ~21:00 UTC.
 
 - [x] **CP-PRE-01** All feature branches merged to `main` (CP-UI-36 to CP-UI-42 all done)
-- [ ] **CP-PRE-02** Trade close email added (CP-UI-25) — confirms CP-18 in your inbox
-- [x] **CP-PRE-03** MySQL running, Flyway V1–V6 migrations applied
+- [x] **CP-PRE-02** Trade close email wired (CP-UI-25) — confirms CP-18 in your inbox
+- [x] **CP-PRE-03** MySQL running, Flyway V1–V9 migrations applied
 - [x] **CP-PRE-04** MT5 bridge healthy: `GET http://localhost:8001/health` → `connected:true`
 - [x] **CP-PRE-05** Signal engine healthy: `GET http://localhost:8002/health`
 - [x] **CP-PRE-06** Backend running, dashboard loads, balance shows $100,000 USD
@@ -266,20 +306,38 @@ CP-15: H1 signals all HOLD over weekend (expected — forex markets closed Sat/S
 CP-23: Models trained on 4,801 H1 candles each (~7 months of data).
        USDJPY best accuracy at 70%. Retrain monthly or after significant market regime change.
 
-SIGNAL GATE THRESHOLDS (current):
-  Technical gate — BUY:  EMA fast > slow, close > EMA200, RSI 30–65, MACD hist > 0
-  Technical gate — SELL: EMA fast < slow, close < EMA200, RSI 35–70, MACD hist < 0
-  AI gate — minimum confidence: 55% (MIN_CONFIDENCE = 0.55)
+SIGNAL GATE THRESHOLDS — Strategy V2 (current):
+  Technical gate — BUY:  SMA5 > SMA30, SMA30 > SMA62, close > SMA200, ADX ≥ 20, RSI 30–65
+  Technical gate — SELL: SMA5 < SMA30, SMA30 < SMA62, close < SMA200, ADX ≥ 20, RSI 35–70
+  DXY filter — if DXY is trending strongly, filters out opposing USD pairs
+  US session gate — US100/US500/US30 only scanned 13:30–20:00 UTC Mon–Fri
+  AI gate — XGBoost predicts same direction with ≥ 55% confidence
   Both gates must agree on direction for a trade to open.
   If technical = HOLD, AI gate is skipped entirely (gate optimisation).
+
+ML MODEL (V2):
+  Features: 16 total (SMA momentum, ADX, RSI, BB position, ATR%, candle body,
+            OBV change, ATR percentile, VWAP deviation, time-of-day sin/cos)
+  Labeling: forward ATR-outcome — did TP (4.5×ATR) hit before SL (1.5×ATR) within 20 H1 bars?
+  Accuracy: 75%+ across all 9 symbols after V2 retraining
+
+TRAILING STOP LOGIC:
+  Runs every 5 minutes via TrailingStopService.
+  Phase 1 (profit ≥ 2×ATR): move SL to entry price (break-even)
+  Phase 2 (profit ≥ 3×ATR): trail SL at (current − 1×ATR) for BUY, (current + 1×ATR) for SELL
+  SL only moves in the favourable direction — never widens.
+  Price data from signal engine /price/{symbol} (H1 candle cache).
 
 FLYWAY MIGRATIONS:
   V1 — Initial schema (trades, signals, ohlcv, bot_config)
   V2 — Users table (email, role, enabled, OAuth2)
   V3 — Full name, invite token, password reset token
-  V4 — Per-symbol settings (symbol_settings, seeds 4 pairs)
+  V4 — Per-symbol settings (symbol_settings, seeds 4 pairs: EURUSD GBPUSD USDJPY AUDUSD)
   V5 — Phone field on users (VARCHAR 20, SA format +27XXXXXXXXX)
   V6 — Email verification (email_verified, token, expiry) + account lockout (failed_attempts, locked_until)
+  V7 — sl_atr_mult / tp_atr_mult on symbol_settings (per-symbol ATR multipliers; default 1.5/4.5)
+  V8 — Strategy V2 symbols: remove USDJPY, seed XAUUSD, EURJPY, AUDJPY, US100, US500, US30
+  V9 — atr column on trades (used by TrailingStopService for break-even / trail calculations)
 
 BRAND: Blue Ocean Hub (renamed from Harvest Technologies — all UI and docs updated)
 
@@ -291,9 +349,11 @@ GCP UAT ENVIRONMENT:
   Compose:  ~/forex-ai-bot/docker-compose.yml — 4 services (mysql, mt5-bridge, signal-engine, backend)
   Scripts:  deploy.sh / restart.sh / status.sh / logs.sh [SERVICE]
   MetaAPI:  Cloud-G2, London region — account 109814567, balance $100,000 USD demo
-  Models:   Trained on GCP — ~801 samples, ~59% accuracy (retrain monthly)
-            Trigger: docker exec forexbot-signal-engine python -c "..."
-            POST http://localhost:8002/train/{symbol} per symbol (EURUSD, GBPUSD, USDJPY, AUDUSD)
+  Models:   Trained on GCP — Strategy V2; 75%+ accuracy across 9 symbols (retrain monthly)
+            Trigger: POST http://localhost:8002/train/{symbol} per symbol
+            Symbols: EURUSD, GBPUSD, AUDUSD, XAUUSD, EURJPY, AUDJPY, US100, US500, US30
+            US100/US500/US30 need ≥400 samples to auto-enable (broker accumulates history over time)
+            Model stats visible in Bot Settings → per-symbol cards after training
 
 DEFAULT ADMIN (seed on first startup — DataInitializer.java):
   Username: admin
