@@ -808,12 +808,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const mlConflicts = (d.ml === 'BUY' && d.trend === 'bearish')
                        || (d.ml === 'SELL' && d.trend === 'bullish');
       const aiLabel = d.ml === 'HOLD'
-        ? `<span class="mo-pill grey">WAIT · ${mlConf}%</span>`
+        ? `<span class="mo-pill grey">WAIT · ${mlConf}% confident</span>`
         : mlConflicts
-          ? `<span class="mo-pill amber">Mixed · ${mlConf}%</span>`
+          ? `<span class="mo-pill amber">Mixed · ${mlConf}% confident</span>`
           : d.ml === 'BUY'
-            ? `<span class="mo-pill green">BUY · ${mlConf}%</span>`
-            : `<span class="mo-pill red">SELL · ${mlConf}%</span>`;
+            ? `<span class="mo-pill green">BUY · ${mlConf}% confident</span>`
+            : `<span class="mo-pill red">SELL · ${mlConf}% confident</span>`;
 
       // DXY bias row — only shown for USD-correlated pairs
       const dxySymbols = new Set(['EURUSD','GBPUSD','AUDUSD','XAUUSD']);
@@ -1169,6 +1169,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : `<span style="font-size:.72rem;color:#475569">No trades fired</span>`;
             const holdPct = s.total > 0 ? Math.round(s.holdCount / s.total * 100) : 0;
             const lastDir = s.lastDir ?? 'HOLD';
+            const lastDirLabel = lastDir === 'HOLD' ? 'WAIT' : lastDir;
             return `<div class="hsym-card ${cardCls}">
               <div class="hsym-name">
                 <span>${fmtSym(sym)}</span>
@@ -1179,12 +1180,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span class="hsym-val">${s.total}</span>
               </div>
               <div class="hsym-row">
-                <span class="hsym-lbl">Holding</span>
+                <span class="hsym-lbl">Waiting</span>
                 <span class="hsym-val">${holdPct}% of period</span>
               </div>
               <div class="hsym-row">
                 <span class="hsym-lbl">Current signal</span>
-                <span class="hsym-val"><span class="badge ${badgeCls(lastDir)}" style="font-size:.7rem">${lastDir}</span></span>
+                <span class="hsym-val"><span class="badge ${badgeCls(lastDir)}" style="font-size:.7rem">${lastDirLabel}</span></span>
               </div>
               ${s.lastReason ? `<div class="hsym-reason">${s.lastReason}</div>` : ''}
             </div>`;
