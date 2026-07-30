@@ -808,7 +808,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const mlConflicts = (d.ml === 'BUY' && d.trend === 'bearish')
                        || (d.ml === 'SELL' && d.trend === 'bullish');
       const aiLabel = d.ml === 'HOLD'
-        ? `<span class="mo-pill grey">HOLD · ${mlConf}%</span>`
+        ? `<span class="mo-pill grey">WAIT · ${mlConf}%</span>`
         : mlConflicts
           ? `<span class="mo-pill amber">Mixed · ${mlConf}%</span>`
           : d.ml === 'BUY'
