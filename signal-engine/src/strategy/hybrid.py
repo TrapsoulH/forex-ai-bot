@@ -100,15 +100,15 @@ class HybridStrategy:
 
         if ml_sig == "HOLD":
             return _hold(tech=tech, ml="HOLD", ml_conf=ml_conf,
-                         reason=f"AI sees no trade ({pct(ml_conf)}) — chart says {tech}")
+                         reason=f"AI is {pct(ml_conf)} confident: no trade — chart says {tech}")
 
         if tech != ml_sig:
             return _hold(tech=tech, ml=ml_sig, ml_conf=ml_conf,
-                         reason=f"Split opinion — chart: {tech}, AI: {ml_sig} ({pct(ml_conf)})")
+                         reason=f"Split opinion — chart: {tech}, AI: {ml_sig} ({pct(ml_conf)} confident)")
 
         if ml_conf < self.MIN_CONFIDENCE:
             return _hold(tech=tech, ml=ml_sig, ml_conf=ml_conf,
-                         reason=f"AI not confident enough ({pct(ml_conf)}, need {pct(self.MIN_CONFIDENCE)})")
+                         reason=f"AI only {pct(ml_conf)} confident on {ml_sig} — needs {pct(self.MIN_CONFIDENCE)} to fire")
 
         # ── Signal confirmed — calculate ATR-based SL/TP ──────────────────────
         last  = df.iloc[-1]
