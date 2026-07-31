@@ -166,11 +166,19 @@ public class SignalPollerService {
                 symbol, dto.getSignal(), dto.getConfidence(), dto.getReason());
 
         if (!"HOLD".equals(dto.getSignal())) {
-            tradeService.openTrade(symbol, dto.getSignal(), dto.getConfidence(),
-                    dto.getSlPrice(), dto.getTpPrice(), dto.getAtr(), saved.getId());
-            saved.setActedOn(true);
-            signalRepository.save(saved);
-            sseService.broadcastTrade();
+            // Per-symbol guard: never open a second trade on the same symbol
+            // while one is already open. The global max-trades check above only
+            // caps the total count — without this a sustained BUY signal would
+            // open a new trade on every scan cycle until the cap is reached.
+            if (tradeRepository.existsBySymbolAndStatus(symbol, com.forexbot.model.Trade.TradeStatus.OPEN)) {
+                log.debug("[{}] Trade already open — skipping duplicate {} signal", symbol, dto.getSignal());
+            } else {
+                tradeService.openTrade(symbol, dto.getSignal(), dto.getConfidence(),
+                        dto.getSlPrice(), dto.getTpPrice(), dto.getAtr(), saved.getId());
+                saved.setActedOn(true);
+                signalRepository.save(saved);
+                sseService.broadcastTrade();
+            }
         }
 
         sseService.broadcastSignal();
