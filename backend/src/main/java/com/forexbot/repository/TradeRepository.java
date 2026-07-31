@@ -24,6 +24,9 @@ public interface TradeRepository extends JpaRepository<Trade, Long> {
     @Query("SELECT COUNT(t) FROM Trade t WHERE t.status = 'OPEN'")
     long countOpen();
 
+    /** Returns true when at least one trade for the given symbol is currently open. */
+    boolean existsBySymbolAndStatus(String symbol, Trade.TradeStatus status);
+
     // ── Analytics queries ──────────────────────────────────────────────────────
 
     /** All closed trades sorted oldest-first — for equity curve and scatter chart. */
