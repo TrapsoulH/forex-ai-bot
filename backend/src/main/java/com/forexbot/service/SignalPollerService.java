@@ -3,6 +3,7 @@ package com.forexbot.service;
 import com.forexbot.config.BotProperties;
 import com.forexbot.dto.SignalDto;
 import com.forexbot.model.Signal;
+import com.forexbot.repository.BotConfigRepository;
 import com.forexbot.repository.SignalRepository;
 import com.forexbot.repository.TradeRepository;
 import com.forexbot.repository.UserRepository;
@@ -28,6 +29,7 @@ import java.util.Set;
 public class SignalPollerService {
 
     private final BotProperties         botProperties;
+    private final BotConfigRepository   botConfigRepository;
     private final SymbolSettingsService symbolSettingsService;
     private final SignalRepository      signalRepository;
     private final TradeRepository       tradeRepository;
@@ -47,6 +49,7 @@ public class SignalPollerService {
 
     public SignalPollerService(
             BotProperties botProperties,
+            BotConfigRepository botConfigRepository,
             SymbolSettingsService symbolSettingsService,
             SignalRepository signalRepository,
             TradeRepository tradeRepository,
@@ -57,6 +60,7 @@ public class SignalPollerService {
             @Qualifier("signalWebClient") WebClient signalClient
     ) {
         this.botProperties        = botProperties;
+        this.botConfigRepository  = botConfigRepository;
         this.symbolSettingsService = symbolSettingsService;
         this.signalRepository     = signalRepository;
         this.tradeRepository      = tradeRepository;
@@ -65,6 +69,16 @@ public class SignalPollerService {
         this.emailService         = emailService;
         this.userRepository       = userRepository;
         this.signalClient         = signalClient;
+    }
+
+    /** Read max_open_trades from DB (admin-configurable); fall back to application.yml default. */
+    private int getMaxOpenTrades() {
+        return botConfigRepository.findByConfigKey("max_open_trades")
+                .map(c -> {
+                    try { return Integer.parseInt(c.getConfigValue().trim()); }
+                    catch (NumberFormatException e) { return botProperties.getMaxOpenTrades(); }
+                })
+                .orElse(botProperties.getMaxOpenTrades());
     }
 
     // US index CFDs — only trade during US session (13:30–20:00 UTC, Mon–Fri)
@@ -99,8 +113,9 @@ public class SignalPollerService {
         }
 
         long openTrades = tradeRepository.countOpen();
-        if (openTrades >= botProperties.getMaxOpenTrades()) {
-            log.info("Max open trades reached ({}) — skipping scan", openTrades);
+        int  maxTrades  = getMaxOpenTrades();
+        if (openTrades >= maxTrades) {
+            log.info("Max open trades reached ({}/{}) — skipping scan", openTrades, maxTrades);
             return;
         }
 
