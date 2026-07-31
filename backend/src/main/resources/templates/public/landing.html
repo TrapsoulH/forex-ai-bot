@@ -337,7 +337,7 @@
       </h1>
       <p class="hero-sub">
         We combine technical analysis with a trained ML model to spot trade setups
-        on major forex pairs — and show them on your dashboard before you miss them.
+        across forex, gold, and US indices — and show them on your dashboard before you miss them.
       </p>
       <div class="hero-actions">
         <a th:href="@{/register}" class="btn-hero-primary">
@@ -401,7 +401,7 @@
         </div>
         <div class="signal-row">
           <div>
-            <div class="signal-pair">AUD / USD</div>
+            <div class="signal-pair">US500</div>
             <div class="signal-meta">H1 · RSI(9) 34 · ADX 22 · SMA cross ↑</div>
           </div>
           <div style="display:flex;align-items:center;gap:10px">
@@ -430,8 +430,8 @@
 <div class="stats-bar">
   <div class="stats-bar-inner">
     <div class="stat-item reveal" data-delay="0">
-      <div class="stat-val" data-count="4" data-suffix="">4</div>
-      <div class="stat-label">Pairs monitored</div>
+      <div class="stat-val" data-count="9" data-suffix="">9</div>
+      <div class="stat-label">Instruments monitored</div>
     </div>
     <div class="stat-item reveal" data-delay="100">
       <div class="stat-val" data-count="60" data-suffix="s">60s</div>
@@ -465,9 +465,9 @@
         <div class="feat-icon feat-icon-blue"><i data-lucide="cpu" style="width:20px;height:20px"></i></div>
         <h3>Dual-gate signal engine</h3>
         <p>
-          A signal only fires when both the technical analysis (SMA, ADX, RSI)
-          and the ML model agree. That keeps false signals low and your attention on
-          setups that actually matter.
+          A signal only fires when technical analysis (SMA, ADX, RSI), the ML model,
+          and a DXY trend filter all agree. Three independent gates keep false signals
+          low and your attention on setups that actually matter.
         </p>
       </div>
       <div class="feat-card reveal" data-delay="100">
@@ -483,9 +483,9 @@
         <div class="feat-icon feat-icon-amber"><i data-lucide="shield" style="width:20px;height:20px"></i></div>
         <h3>Risk controls</h3>
         <p>
-          Set your stop-loss, take-profit, and max open trades once and leave them.
-          Switch to paper trading mode any time to test your setup without
-          touching real money.
+          ATR-based stop-loss and take-profit, configurable per instrument. A trailing stop
+          automatically moves to break-even then trails the price as the trade runs.
+          Switch to paper trading mode any time to test without touching real money.
         </p>
       </div>
       <div class="feat-card reveal" data-delay="300">
@@ -520,7 +520,7 @@
       <div class="hiw-step reveal" data-delay="160">
         <div class="hiw-num">2</div>
         <h3>The engine starts scanning</h3>
-        <p>It checks EURUSD, GBPUSD, USDJPY, and AUDUSD every 60 seconds on the hourly chart — automatically.</p>
+        <p>It scans EURUSD, GBPUSD, AUDUSD, XAUUSD, EURJPY, AUDJPY, US100, US500, and US30 every 60 seconds on the hourly chart — automatically.</p>
       </div>
       <div class="hiw-step reveal" data-delay="320">
         <div class="hiw-num">3</div>
