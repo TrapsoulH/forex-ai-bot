@@ -47,7 +47,17 @@ async def open_trade(
         sl_info = f"SL={sl_price}" if sl_price else f"SL={sl_pips}pip"
         tp_info = f"TP={tp_price}" if tp_price else f"TP={tp_pips}pip"
         logger.info(f"[PAPER] Would open {direction} {volume} {symbol} {sl_info} {tp_info}")
-        return {"success": True, "paper": True, "message": f"Paper trade: {direction} {volume} {symbol}"}
+        # Fetch current price so the backend can record the entry price in the trade row
+        entry_price = None
+        conn = mt5_client.get_connection()
+        if conn:
+            try:
+                price_info = await conn.get_symbol_price(symbol)
+                entry_price = price_info["ask"] if direction.upper() == "BUY" else price_info["bid"]
+            except Exception as e:
+                logger.debug(f"[PAPER] Could not fetch entry price for {symbol}: {e}")
+        return {"success": True, "paper": True, "price": entry_price,
+                "message": f"Paper trade: {direction} {volume} {symbol}"}
 
     conn = mt5_client.get_connection()
     if not conn:
